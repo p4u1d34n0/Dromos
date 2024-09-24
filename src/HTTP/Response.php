@@ -11,6 +11,14 @@ class Response
     {
         // Set content type header
         header('Content-Type: application/json', true, $statusCode);
+
+        // Set the response headers
+        if (!empty($this->headers)) {
+            foreach ($this->headers as $key => $value) {
+                header($key .':'. $value);
+            }
+        }
+
         // Set the response body to the JSON-encoded data
         $this->body = json_encode($data);
 
@@ -21,6 +29,6 @@ class Response
 
     public function headers(array $headers): void
     {
-        $this->headers = $headers;
+        $this->headers[] = $headers;
     }
 }

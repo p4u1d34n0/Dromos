@@ -8,9 +8,9 @@ use Throwable;
 class RouterExceptionHandler extends Exception
 {
 
-    public static function handle(Throwable $e): void
+    public static function handle(Throwable $e, $responseCode = 500): void
     {
-        http_response_code(500);
+        http_response_code($responseCode);
 
         // get all superglobals
         $globals = [
@@ -148,15 +148,6 @@ class RouterExceptionHandler extends Exception
         ';
     }
 
-    public static function MethodNotAllowed($available = []): void
-    {
-        http_response_code(405);
-        throw new Exception('Method not allowed' . ($available ? '. Available methods: ' . implode(', ', $available) : ''));
-    }
-
-    public static function RouteNotFound(): void
-    {
-        http_response_code(404);
-        throw new Exception('Route not found');
-    }
+    
 }
+

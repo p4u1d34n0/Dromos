@@ -13,9 +13,15 @@ class Router
 {
     protected static $routes = [];
 
-    public static function routes(): array
+    private static $missingRoutes = [];
+
+    public static function checkRoutes(): array
     {
-        return self::$routes;
+        $routes = self::$routes;
+        if (!empty(self::$missingRoutes)) {
+            RouterException::TargetNotFound(self::$missingRoutes);
+        }
+        return $routes;
     }
 
     public static function Get(string $url, $target): string
@@ -60,12 +66,6 @@ class Router
         return $resource;
     }
 
-    public static function prefix(string $prefix)
-    {
-        // example: /api/v1
-        
-    }
-
     public static function matchRoute(): void
     {
         try {
@@ -94,7 +94,6 @@ class Router
                 }
 
                 RouterException::RouteNotFound();
-
             } else {
                 RouterException::MethodNotAllowed();
             }
@@ -102,7 +101,7 @@ class Router
             RouterExceptionHandler::handle($e);
         }
     }
-    
+
     public static function addRoute(string $method, string $url, $target): string
     {
         self::$routes[$method][$url] = self::checkTarget($target);
@@ -119,14 +118,13 @@ class Router
             $controllerInstance = new $target[0];
 
             if (!method_exists($controllerInstance, $target[1])) {
-                RouterException::TargetNotFound();
+                self::$missingRoutes[] = [$controllerInstance, $target[1]];
             }
 
             $target[0] = $controllerInstance;
             return $target;
         }
 
-        RouterException::TargetNotFound();
         return []; // Ensure a return value
     }
 
@@ -182,5 +180,4 @@ class Router
             call_user_func_array([$target[0], $target[1]], $args);
         }
     }
-
 }

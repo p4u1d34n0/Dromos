@@ -2,9 +2,6 @@
 # Summary of How It Works
 
 This section provides an overview of the functionality and operation of the Router project. It explains the core concepts, architecture, and workflow to help users understand how the system operates.
-Summary of How It Works
-
-
 
 **Using Closure Functions**
 ```
@@ -32,7 +29,7 @@ Router::GET(url: "/home/{id}", target: function (Request $request, Response $res
 
 ```
 
-# Route Definition:
+**Route Definition:**
 
 You define a route with placeholders using curly braces (e.g., /data/{id}/user/{user_id}).
 

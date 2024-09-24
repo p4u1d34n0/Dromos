@@ -23,11 +23,26 @@ class RouterException extends RouterExceptionHandler
         );
     }
 
-    public static function TargetNotFound(): void
+    public static function TargetNotFound(array $missing = null): void
     {
+
+        $missingRoutes = array_map(callback: function ($route): array {
+            return [$route[0]::class => $route[1] ];
+        }, array: $missing);
+
+        if (!empty($missingRoutes)) {
+            self::handle(
+                e: new RouterExceptionHandler(message: 'Missing Target Methods'),
+                responseCode: 404,
+                args: ['Missing Routes' => $missingRoutes]
+            );
+            exit;
+        }
+
         self::handle(
-            e: new RouterExceptionHandler(message: 'Route Target not found'), 
-            responseCode: 404
+            e: new RouterExceptionHandler(message: 'Target not found'),
+            responseCode: 404,
+            args: $missingRoutes
         );
     }
 }

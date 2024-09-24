@@ -34,9 +34,14 @@ class RouteResource
     }
 
     // Method to exclude specific HTTP methods
-    public function api(array $methods): self
+    public function apiResource(array $methods = []): self
     {
-        $this->excludedMethods = array_map('strtoupper', $methods);
+        if (!empty($methods)) {
+            $this->excludedMethods = array_map('strtoupper', $methods);
+            return $this;
+        }
+
+        $this->excludedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         return $this;
     }
 

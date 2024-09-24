@@ -27,8 +27,8 @@ class Response
         exit; // End the script after sending response
     }
 
-    public function headers(array $headers): void
+    public function headers(string $key, mixed $value): void
     {
-        $this->headers[] = $headers;
+        $this->headers[$key] = $value;
     }
 }

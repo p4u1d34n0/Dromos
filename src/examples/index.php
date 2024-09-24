@@ -10,23 +10,18 @@ use App\Router;
 use App\HTTP\Response;
 use App\HTTP\Request;
 
-Router::Resource(
+/* Router::Resource(
     url: "/home/{parameter}", 
     controller: HomeController::class
-)->exceptMethods(
-    methods: ["GET", "POST"]
-);
+)->apiResource(); */
 
-
-Router::Resource(
+/* Router::Resource(
     url: "/home/{parameter}", 
     controller: HomeController::class
-)->onlyMethods(
-    methods: ["GET", "POST"]
-);
+); */
 
 Router::Get(url: "/home/{id}", target: function (Request $request, Response $response, $id) {
-    $response->headers(headers: ["x-custom-header" => md5(string: $id)]);
+    $response->headers(key: "x-custom-header" , value: md5(string: $id));
     return $response->json(data: [$id => $request->get(key: 'id')]);
 });
 
@@ -41,8 +36,8 @@ Router::Get(url: "/data/{id}/user/{user_id}", target: function (Request $request
     ]);
 });
 
-$routes = Router::routes();
-echo '<pre>' . print_r($routes, true) . '</pre>';
+//$routes = Router::checkRoutes();
+//echo '<pre>' . print_r($routes, true) . '</pre>';
 
 // Run the router
 Router::matchRoute();

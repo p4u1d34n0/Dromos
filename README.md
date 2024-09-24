@@ -1,13 +1,41 @@
 
-##Summary of How It Works##
+# Summary of How It Works
 
-#Route Definition:#
+This section provides an overview of the functionality and operation of the Router project. It explains the core concepts, architecture, and workflow to help users understand how the system operates.
+Summary of How It Works
+
+
+
+**Using Closure Functions**
+```
+Router::GET(url: "/home/{id}", target: function (Request $request, Response $response) {
+    echo "The ID id ". $response->get('id');
+});
+```
+
+**Using Controllers**
+```
+Router::GET("/home/{id}",       [SomeController::class, 'getMethodHandler']);
+Router::PUT("/home/{id}",       [SomeController::class, 'putMethodHandler']);
+Router::POST("/home/{id}",      [SomeController::class, 'postMethodHandler']);
+Router::HEAD("/home/{id}",      [SomeController::class, 'headMethodHandler']);
+Router::PATCH("/home/{id}",     [SomeController::class, 'patchMethodHandler']);
+Router::DELETE("/home/{id}",    [SomeController::class, 'deleteMethodHandler']);
+Router::OPTIONS("/home/{id}",   [SomeController::class, 'optionsMethodHandler']);
+```
+
+**Returning JSON**
+```
+Router::GET(url: "/home/{id}", target: function (Request $request, Response $response) {
+    return $response->json(['message' => $request->get('id')]);
+});
+
+```
+
+# Route Definition:
 
 You define a route with placeholders using curly braces (e.g., /data/{id}/user/{user_id}).
-Parameter Extraction: The RequestParameters::handle method extracts parameter names and their corresponding values from the actual URL.
 
-#Reconstruction:#
+### Work In Progress
 
-The expected URL is reconstructed by replacing the placeholders with actual values.
-Matching: The router checks if the reconstructed expected URL matches the actual URL.
-Execution: If a match is found, the corresponding target (closure or controller method) is called with the extracted parameters.
+The idea here is for me to produce a lightweight PHP router for composer inclusion.

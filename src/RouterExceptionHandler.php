@@ -27,7 +27,6 @@ class RouterExceptionHandler extends Exception
      * @return void
      */
 
-    //todo switch error pages to php to accept args
     public static function handle(Throwable $e, $responseCode = 500, $args = []): void
     {
 

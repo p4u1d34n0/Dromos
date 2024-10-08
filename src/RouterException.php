@@ -1,8 +1,8 @@
 <?php
 
-namespace App;
+namespace Dromos;
 
-use App\RouterExceptionHandler;
+use Dromos\RouterExceptionHandler;
 
 /**
  * Class RouterException

@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace Dromos;
 
 use Exception;
 use Throwable;

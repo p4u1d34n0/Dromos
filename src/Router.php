@@ -1,13 +1,13 @@
 <?php
 
-namespace App;
+namespace Dromos;
 
-use App\Middleware\RequestParameters;
-use App\RouterException;
+use Dromos\Middleware\RequestParameters;
+use Dromos\RouterException;
 use Closure;
-use App\HTTP\Response;
-use App\HTTP\Request;
-use App\RouteResource;
+use Dromos\HTTP\Response;
+use Dromos\HTTP\Request;
+use Dromos\RouteResource;
 
 /**
  * Class Router

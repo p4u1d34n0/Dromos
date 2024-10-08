@@ -1,6 +1,8 @@
 {
     "name": "p4u1d34n/dromos",
     "description": "Lightweight PHP Router",
+    "type": "library",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "App\\": "src/"
@@ -12,5 +14,7 @@
             "email": "pauldeano@icloud.com"
         }
     ],
-    "require": {}
+    "require": {
+        "php": ">=8.2"
+    }
 }

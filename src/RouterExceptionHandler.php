@@ -64,7 +64,8 @@ class RouterExceptionHandler extends Exception
         ];
 
         // Render a custom error page
-        echo self::renderErrorPage(e: $e, globals: $globals, args: $args);
+        throw new RouterException(message: $e->getMessage(), code: $responseCode, previous: $args);
+        //echo self::renderErrorPage(e: $e, globals: $globals, args: $args);
     }
 
     /**

@@ -20,8 +20,10 @@ use App\RouteResource;
  */
 class Router
 {
+    // Array to store registered routes
     protected static $routes = [];
 
+    // Array to store missing routes
     private static $missingRoutes = [];
 
     /**
@@ -37,7 +39,7 @@ class Router
     {
         $routes = self::$routes;
         if (!empty(self::$missingRoutes)) {
-            RouterException::TargetNotFound(self::$missingRoutes);
+            RouterException::TargetNotFound(missing: self::$missingRoutes);
         }
         return $routes;
     }
@@ -51,7 +53,11 @@ class Router
      */
     public static function Get(string $url, $target): string
     {
-        return self::addRoute('GET', $url, $target);
+        return self::addRoute(
+            method: 'GET',
+            url: $url,
+            target: $target
+        );
     }
 
     /**
@@ -63,7 +69,11 @@ class Router
      */
     public static function Post(string $url, $target): string
     {
-        return self::addRoute('POST', $url, $target);
+        return self::addRoute(
+            method: 'POST',
+            url: $url,
+            target: $target
+        );
     }
 
     /**
@@ -75,7 +85,11 @@ class Router
      */
     public static function Put(string $url, $target): string
     {
-        return self::addRoute('PUT', $url, $target);
+        return self::addRoute(
+            method: 'PUT',
+            url: $url,
+            target: $target
+        );
     }
 
     /**
@@ -87,7 +101,11 @@ class Router
      */
     public static function Head(string $url, $target): string
     {
-        return self::addRoute('HEAD', $url, $target);
+        return self::addRoute(
+            method: 'HEAD',
+            url: $url,
+            target: $target
+        );
     }
 
     /**
@@ -99,7 +117,11 @@ class Router
      */
     public static function Options(string $url, $target): string
     {
-        return self::addRoute('OPTIONS', $url, $target);
+        return self::addRoute(
+            method: 'OPTIONS',
+            url: $url,
+            target: $target
+        );
     }
 
     /**
@@ -114,7 +136,7 @@ class Router
      */
     public static function Resource(string $url, string $controller): RouteResource
     {
-        $resource = new RouteResource($url, $controller);
+        $resource = new RouteResource(url: $url, controller: $controller);
         $resource->register();
         return $resource;
     }
@@ -139,17 +161,17 @@ class Router
                 foreach (self::$routes[$method] as $routeUrl => $target) {
 
                     if ($url === $routeUrl) {
-                        self::handleTarget($target, []);
+                        self::handleTarget(target: $target, parameters: []);
                         return;
                     }
 
-                    $parameterExtraction = RequestParameters::handle($routeUrl, $url);
+                    $parameterExtraction = RequestParameters::handle(route: $routeUrl, url: $url);
 
                     if (!empty($parameterExtraction)) {
-                        $expectedUrl = self::reconstructUrl($routeUrl, $parameterExtraction);
+                        $expectedUrl = self::reconstructUrl(routeUrl: $routeUrl, parameters: $parameterExtraction);
 
                         if ($expectedUrl === $url) {
-                            self::handleTarget($target, $parameterExtraction);
+                            self::handleTarget(target: $target, parameters: $parameterExtraction);
                             return;
                         }
                     }
@@ -160,7 +182,7 @@ class Router
                 RouterException::MethodNotAllowed();
             }
         } catch (\Throwable $e) {
-            RouterExceptionHandler::handle($e);
+            RouterExceptionHandler::handle(e: $e);
         }
     }
 
@@ -174,7 +196,7 @@ class Router
      */
     public static function addRoute(string $method, string $url, $target): string
     {
-        self::$routes[$method][$url] = self::checkTarget($target);
+        self::$routes[$method][$url] = self::checkTarget(target: $target);
         return self::class;
     }
 
@@ -197,10 +219,10 @@ class Router
             return $target;
         }
 
-        if (is_array($target) && count($target) === 2 && is_string($target[0])) {
+        if (is_array(value: $target) && count(value: $target) === 2 && is_string(value: $target[0])) {
             $controllerInstance = new $target[0];
 
-            if (!method_exists($controllerInstance, $target[1])) {
+            if (!method_exists(object_or_class: $controllerInstance, method: $target[1])) {
                 self::$missingRoutes[] = [$controllerInstance, $target[1]];
             }
 
@@ -224,7 +246,7 @@ class Router
     private static function reconstructUrl(string $routeUrl, array $parameters): string
     {
         foreach ($parameters as $key => $value) {
-            $routeUrl = str_replace("{{$key}}", $value, $routeUrl);
+            $routeUrl = str_replace(search: "{{$key}}", replace: $value, subject: $routeUrl);
         }
         return $routeUrl;
     }
@@ -247,7 +269,7 @@ class Router
     {
         // Create Request and Response objects
         $response = new Response();
-        $request = new Request($parameters);
+        $request = new Request(parameters: $parameters);
 
         // Prepare the arguments to be passed
         $args = [];
@@ -256,9 +278,9 @@ class Router
         $reflection = null;
 
         if ($target instanceof Closure) {
-            $reflection = new \ReflectionFunction($target);
-        } elseif (is_array($target) && count($target) === 2) {
-            $reflection = new \ReflectionMethod($target[0], $target[1]);
+            $reflection = new \ReflectionFunction(function: $target);
+        } elseif (is_array(value: $target) && count(value: $target) === 2) {
+            $reflection = new \ReflectionMethod(objectOrMethod: $target[0], method: $target[1]);
         }
 
         if ($reflection) {
@@ -270,21 +292,21 @@ class Router
                     $args[] = $request;
                 } elseif ($paramType === Response::class) {
                     $args[] = $response;
-                } elseif (array_key_exists($param->getName(), $parameters)) {
+                } elseif (array_key_exists(key: $param->getName(), array: $parameters)) {
                     $args[] = $parameters[$param->getName()];
                 } elseif ($param->isOptional()) {
                     $args[] = $param->getDefaultValue();
                 } else {
-                    throw new \InvalidArgumentException("Unable to resolve parameter: " . $param->getName());
+                    throw new \InvalidArgumentException(message: "Unable to resolve parameter: " . $param->getName());
                 }
             }
         }
 
         // Call the target with the resolved arguments
         if ($target instanceof Closure) {
-            call_user_func_array($target, $args);
-        } elseif (is_array($target) && count($target) === 2) {
-            call_user_func_array([$target[0], $target[1]], $args);
+            call_user_func_array(callback: $target, args: $args);
+        } elseif (is_array(value: $target) && count(value: $target) === 2) {
+            call_user_func_array(callback: [$target[0], $target[1]], args: $args);
         }
     }
 }

@@ -5,12 +5,51 @@ namespace App;
 use Exception;
 use Throwable;
 
+/**
+ * RouterExceptionHandler class
+ *
+ * This class extends the base Exception class and provides methods to handle exceptions
+ * by setting the HTTP response code and rendering a custom error page with detailed 
+ * information about the exception, including superglobals and additional arguments.
+ *
+ * Methods:
+ * - handle(Throwable $e, int $responseCode = 500, mixed $args = null): void
+ *   Handles exceptions by setting the HTTP response code and rendering a custom error page.
+ *
+ * - renderErrorPage(Throwable $e, array $globals, array $args): string
+ *   Renders an error page with detailed information about an exception, including superglobals
+ *   and additional arguments.
+ *
+ * Usage:
+ * RouterExceptionHandler::handle($exception);
+ *
+ * Example:
+ * try {
+ *     // Some code that may throw an exception
+ * } catch (Throwable $e) {
+ *     RouterExceptionHandler::handle($e);
+ * }
+ *
+ * @package Router
+ * @subpackage ExceptionHandler
+ * @version 1.0
+ * @since 2023-10
+ */
 class RouterExceptionHandler extends Exception
 {
 
+    /**
+     * Handles exceptions by setting the HTTP response code and rendering a custom error page.
+     *
+     * @param Throwable $e The exception to handle.
+     * @param int $responseCode The HTTP response code to set (default is 500).
+     * @param mixed $args Additional arguments to pass to the error page renderer (default is null).
+     *
+     * @return void
+     */
     public static function handle(Throwable $e, $responseCode = 500, $args = null): void
     {
-        http_response_code($responseCode);
+        http_response_code(response_code: $responseCode);
 
         // get all superglobals
         $globals = [
@@ -25,9 +64,20 @@ class RouterExceptionHandler extends Exception
         ];
 
         // Render a custom error page
-        echo self::renderErrorPage($e, $globals, $args);
+        echo self::renderErrorPage(e: $e, globals: $globals, args: $args);
     }
 
+    /**
+     * Renders an error page with detailed information about an exception.
+     *
+     * This method generates an HTML page displaying the exception message, file, line, and stack trace.
+     * It also includes additional information from the provided globals and args arrays.
+     *
+     * @param Throwable $e The exception to be displayed.
+     * @param array $globals An associative array of global variables to be displayed.
+     * @param array $args An associative array of additional arguments to be displayed.
+     * @return string The generated HTML content as a string.
+     */
     private static function renderErrorPage(Throwable $e, array $globals, array $args): string
     {
         $globalsHTML = '';
@@ -36,7 +86,7 @@ class RouterExceptionHandler extends Exception
                 <li style="border-bottom:1px dashed red">
                     <h3 style="color:red;">' . $key . '</h3>
                     <div style="max-width:80vw;overflow:scroll;">
-                        <pre>' . htmlspecialchars(print_r($value, true)) . '</pre>
+                        <pre>' . htmlspecialchars(string: print_r(value: $value, return: true)) . '</pre>
                     </div>
                 </li>';
         }
@@ -48,13 +98,13 @@ class RouterExceptionHandler extends Exception
                 <li style="border-bottom:1px dashed red">
                     <h3 style="color:red;">' . $key . '</h3>
                     <div style="max-width:80vw;overflow:scroll;">
-                        <pre>' . htmlspecialchars(print_r($value, true)) . '</pre>
+                        <pre>' . htmlspecialchars(string: print_r(value: $value, return: true)) . '</pre>
                     </div>
                 </li>';
             }
         }
 
-        
+
         return '<!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -135,10 +185,10 @@ class RouterExceptionHandler extends Exception
                     <div class="container">
                         <h1><span class="warnignsign">&#x26A0;</span> Exception</h1>
                         <div class="details shown">
-                            <strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '<br>
-                            <strong>File:</strong> ' . htmlspecialchars($e->getFile()) . '<br>
-                            <strong>Line:</strong> ' . htmlspecialchars($e->getLine()) . '<br>
-                            <strong>Trace:</strong> <pre>' . htmlspecialchars(print_r($e->getTrace(), true)) . '</pre>
+                            <strong>Error:</strong> ' . htmlspecialchars(string: $e->getMessage()) . '<br>
+                            <strong>File:</strong> ' . htmlspecialchars(string: $e->getFile()) . '<br>
+                            <strong>Line:</strong> ' . htmlspecialchars(string: $e->getLine()) . '<br>
+                            <strong>Trace:</strong> <pre>' . htmlspecialchars(string: print_r(value: $e->getTrace(), return: true)) . '</pre>
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\HTTP;
+namespace Dromos\HTTP;
 
 /**
  * Class Request

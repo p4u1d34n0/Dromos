@@ -62,6 +62,7 @@ class RouterException extends RouterExceptionHandler
      */
     public static function RouteNotFound(): void
     {
+
         self::handle(
             e: new RouterExceptionHandler(message: 'Route not found'),
             responseCode: 404

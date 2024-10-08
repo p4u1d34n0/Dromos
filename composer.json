@@ -1,5 +1,5 @@
 {
-    "name": "p4u1d34n/dromos",
+    "name": "pauldeano/dromos",
     "description": "Lightweight PHP Router",
     "type": "library",
     "license": "MIT",
@@ -11,7 +11,7 @@
     "authors": [
         {
             "name": "Paul Dean",
-            "email": "pauldeano@icloud.com"
+            "email": "pauldeano123@gmail.com"
         }
     ],
     "require": {

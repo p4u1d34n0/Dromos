@@ -48,7 +48,7 @@ class RouterException extends RouterExceptionHandler
         $message = 'Method not allowed' . ($available ? '. Available methods: ' . implode(', ', $available) : '');
         self::handle(
             e: new RouterExceptionHandler(message: $message),
-            responseCode: 405
+            errorcode: 405
         );
     }
 
@@ -65,7 +65,7 @@ class RouterException extends RouterExceptionHandler
 
         self::handle(
             e: new RouterExceptionHandler(message: 'Route not found'),
-            responseCode: 404
+            errorcode: 404
         );
     }
 
@@ -93,7 +93,7 @@ class RouterException extends RouterExceptionHandler
         if (!empty($missingRoutes)) {
             self::handle(
                 e: new RouterExceptionHandler(message: 'Missing Target Methods'),
-                responseCode: 404,
+                errorcode: 404,
                 args: ['Missing Routes' => $missingRoutes]
             );
             exit;
@@ -101,7 +101,7 @@ class RouterException extends RouterExceptionHandler
 
         self::handle(
             e: new RouterExceptionHandler(message: 'Target not found'),
-            responseCode: 404,
+            errorcode: 404,
             args: $missingRoutes
         );
     }

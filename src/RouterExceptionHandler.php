@@ -27,21 +27,21 @@ class RouterExceptionHandler extends Exception
      * @return void
      */
 
-    public static function handle(Throwable $e, $responseCode = 500, $args = []): void
+    public static function handle(Throwable $e, $errorcode = 500, $args = []): void
     {
 
         // Set the response status code
-        http_response_code(response_code: $responseCode);
+        http_response_code(response_code: $errorcode);
 
         // Determine the path of the error page based on the response code
-        $errorPage = __DIR__ . '/../views/errors/' . $responseCode . '.html';
+        $errorPage = __DIR__ . '/../views/errors/error.php';
 
         // Check if the error page exists, otherwise show a generic error page
         if (file_exists(filename: $errorPage)) {
             include($errorPage);
         } else {
             // Fallback to a generic error message
-            throw new RouterException(message: 'An error occurred', code: $responseCode, previous: $e);
+            throw new RouterException(message: 'An error occurred', code: $errorcode, previous: $e);
         }
         exit; // Stop further execution
 

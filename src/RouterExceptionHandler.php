@@ -34,7 +34,7 @@ class RouterExceptionHandler extends Exception
         http_response_code(response_code: $errorcode);
 
         // Determine the path of the error page based on the response code
-        $errorPage = __DIR__ . '/../views/errors/error.php';
+        $errorPage = __DIR__ . '/views/errors/error.php';
 
         // Check if the error page exists, otherwise show a generic error page
         if (file_exists(filename: $errorPage)) {

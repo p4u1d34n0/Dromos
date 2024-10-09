@@ -1,4 +1,4 @@
-![Dromos - Superlight PHP Router](http://dromos.pauldean.me/Dromos.png)
+<img src="http://dromos.pauldean.me/Dromos.png" alt="Dromos - Superlight PHP Router" height="300px">
 
 # Summary of How It Works
 

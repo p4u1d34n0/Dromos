@@ -1,3 +1,4 @@
+![Dromos - Superlight PHP Router]([http://dromos.pauldean.me/Dromos.png])
 
 # Summary of How It Works
 

@@ -269,6 +269,13 @@ class Router
      */
     protected static function handleTarget($target, array $parameters, Request $request, Response $response): void
     {
+
+        $response = new Response();
+        $request = new Request();
+
+        // Set the route parameters into the request
+        $request->setRouteParams($parameters);
+
         $args = [];
         $reflection = null;
 

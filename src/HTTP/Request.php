@@ -18,6 +18,7 @@ class Request
     protected array $queryParams;
     protected array $bodyParams;
     protected array $files;
+    protected array $routeParams = [];
 
     /**
      * Constructor for the Request class.
@@ -34,6 +35,32 @@ class Request
         $this->queryParams = $parameters['query'] ?? $_GET;
         $this->bodyParams = $parameters['body'] ?? $_POST;
         $this->files = $parameters['files'] ?? $_FILES;
+    }
+
+    /**
+     * Magic getter method to access route parameters.
+     *
+     * This method allows for accessing route parameters as if they were properties
+     * of the object. If the requested parameter does not exist, it returns null.
+     *
+     * @param string $name The name of the route parameter to retrieve.
+     * @return mixed The value of the route parameter, or null if it does not exist.
+     */
+    public function __get($name)
+    {
+        return $this->routeParams[$name] ?? null;
+    }
+
+    /**
+     * Sets the route parameters.
+     *
+     * @param array $params An associative array of route parameters.
+     *
+     * @return void
+     */
+    public function setRouteParams(array $params): void
+    {
+        $this->routeParams = $params;
     }
 
     /**

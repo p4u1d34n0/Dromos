@@ -153,25 +153,27 @@ class Router
     public static function matchRoute(): void
     {
         try {
-            $method = $_SERVER['REQUEST_METHOD'];
-            $url = $_SERVER['REQUEST_URI'];
+
+            $request = new Request();
+            $response = new Response();
+
+            $method = $request->getMethod();
+            $url = $request->getUri();
 
             if (isset(self::$routes[$method])) {
 
                 foreach (self::$routes[$method] as $routeUrl => $target) {
 
                     if ($url === $routeUrl) {
-                        self::handleTarget(target: $target, parameters: []);
+                        self::handleTarget($target, parameters: [], request: $request, response: $response);
                         return;
                     }
 
-                    $parameterExtraction = RequestParameters::handle(route: $routeUrl, url: $url);
-
-                    if (!empty($parameterExtraction)) {
-                        $expectedUrl = self::reconstructUrl(routeUrl: $routeUrl, parameters: $parameterExtraction);
-
+                    $parameters = RequestParameters::handle(route: $routeUrl, url: $url);
+                    if (!empty($parameters)) {
+                        $expectedUrl = self::reconstructUrl($routeUrl, $parameters);
                         if ($expectedUrl === $url) {
-                            self::handleTarget(target: $target, parameters: $parameterExtraction);
+                            self::handleTarget(target: $target, parameters: $parameters, request: $request, response: $response);
                             return;
                         }
                     }
@@ -265,18 +267,12 @@ class Router
      *
      * @return void
      */
-    private static function handleTarget($target, array $parameters): void
+    protected static function handleTarget($target, array $parameters, Request $request, Response $response): void
     {
-        // Create Request and Response objects
-        $response = new Response();
-        $request = new Request(parameters: $parameters);
-
-        // Prepare the arguments to be passed
         $args = [];
-
-        // Use reflection to determine what parameters are expected by the target
         $reflection = null;
 
+        // Reflection to match method signatures
         if ($target instanceof Closure) {
             $reflection = new \ReflectionFunction(function: $target);
         } elseif (is_array(value: $target) && count(value: $target) === 2) {
@@ -287,7 +283,6 @@ class Router
             foreach ($reflection->getParameters() as $param) {
                 $paramType = $param->getType() ? $param->getType()->getName() : null;
 
-                // Check if the parameter is a Request, Response, or a regular parameter (like $id)
                 if ($paramType === Request::class) {
                     $args[] = $request;
                 } elseif ($paramType === Response::class) {
@@ -302,7 +297,7 @@ class Router
             }
         }
 
-        // Call the target with the resolved arguments
+        // Invoke the target (either Closure or Controller)
         if ($target instanceof Closure) {
             call_user_func_array(callback: $target, args: $args);
         } elseif (is_array(value: $target) && count(value: $target) === 2) {

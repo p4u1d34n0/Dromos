@@ -155,4 +155,14 @@ class Request
     {
         return $this->files[$key] ?? null;
     }
+
+    /**
+     * Retrieves all files from uploaded.
+     *
+     * @return mixed The files data if it exists, or null if it does not.
+     */
+    public function getFiles(): mixed
+    {
+        return $this->files ?? null;
+    }
 }

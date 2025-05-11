@@ -1,113 +1,37 @@
 <?php
 
-namespace Dromos\HTTP;
+namespace Dromos\Http;
 
-use Dromos\Enums\StatusCodes;
+use Dromos\Http\Message\ResponseInterface;
+use Dromos\Http\Message\StreamInterface;
 
-class Response
+class Response implements ResponseInterface
 {
-    protected array $headers = [];
-    protected mixed $body;
+    use MessageTrait; // implements headers, body, protocolVersion
+
     protected int $statusCode = 200;
+    protected string $reasonPhrase = 'OK';
 
-    /**
-     * Sends a JSON response.
-     *
-     * @param array $data The data to send as JSON.
-     * @param int $statusCode The HTTP status code (default: 200).
-     */
-    public function json(array $data, int $statusCode = 200): void
+    public function __construct(int $code = 200, string $reason = '')
     {
-        // Set content type header
-        header(
-            header: 'Content-Type: application/json',
-            replace: true,
-            response_code: $statusCode
-        );
-
-        // Set the response headers
-        if (!empty($this->headers)) {
-            foreach ($this->headers as $key => $value) {
-                header(header: $key . ':' . $value);
-            }
-        }
-
-        // Set the response body to the JSON-encoded data
-        $this->body = json_encode(value: $data);
-
-        // Output the response
-        echo $this->body;
-        exit; // End the script after sending response
+        $this->statusCode   = $code;
+        $this->reasonPhrase = $reason ?: $this->reasonPhrase;
+        $this->body         = new Stream();
     }
 
-    /**
-     * Sends a plain text or HTML response.
-     *
-     * @param string $body The response body.
-     * @param int $statusCode The HTTP status code (default: 200).
-     */
-    public function send(string $body, int $statusCode = 200): void
+    public function getStatusCode(): int
     {
-        $this->statusCode = $statusCode;
-        $this->headers(key: 'Content-Type', value: 'text/html');
-        $this->sendBody(body: $body);
+        return $this->statusCode;
     }
-
-    /**
-     * Sends the headers and the body to the client.
-     *
-     * @param string $body The response body to send.
-     */
-    protected function sendBody(string $body): void
+    public function withStatus(int $code, string $reason = ''): static
     {
-        // Send the response headers
-        if (!empty($this->headers)) {
-            foreach ($this->headers as $key => $value) {
-                header(header: "{$key}: {$value}", replace: true, response_code: $this->statusCode);
-            }
-        }
-
-        // Set the body
-        $this->body = $body;
-
-        // Output the body
-        echo $this->body;
-        exit; // Ensure no further output is sent after the response
+        $c = clone $this;
+        $c->statusCode = $code;
+        if ($reason) $c->reasonPhrase = $reason;
+        return $c;
     }
-
-    /**
-     * Sends a status code response with an optional message.
-     *
-     * @param int $statusCode The HTTP status code.
-     * @param string|null $message Optional message to send with the status.
-     */
-    public function sendStatus(int $statusCode, ?string $message = null): void
+    public function getReasonPhrase(): string
     {
-        $this->statusCode = $statusCode;
-
-        // Use a default message for common status codes if none provided
-        if ($message === null) {
-            $message = $this->getStatusMessage(statusCode: $statusCode);
-        }
-
-        $this->headers(key: 'Content-Type', value: 'text/plain');
-        $this->sendBody(body: $message);
-    }
-
-    /**
-     * Retrieves a default message for common HTTP status codes.
-     *
-     * @param int $statusCode The HTTP status code.
-     * @return string The associated message for the status code.
-     */
-    protected function getStatusMessage(int $statusCode): string
-    {
-
-        return StatusCodes::HTTP_STATUS_CODES[$statusCode] ?? 'Unknown Status';
-    }
-
-    public function headers(string $key, mixed $value): void
-    {
-        $this->headers[$key] = $value;
+        return $this->reasonPhrase;
     }
 }

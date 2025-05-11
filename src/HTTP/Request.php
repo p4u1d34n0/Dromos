@@ -1,168 +1,138 @@
 <?php
 
-namespace Dromos\HTTP;
+namespace Dromos\Http;
 
-/**
- * Class Request
- *
- * Handles HTTP request parameters.
- *
- * @package Router\HTTP
- */
-class Request
+use Dromos\Http\Message\ServerRequestInterface;
+use Dromos\Http\Message\StreamInterface;
+use Dromos\Http\Message\UriInterface;
+
+class Request implements ServerRequestInterface
 {
+    use MessageTrait;
 
-    protected array $headers;
     protected string $method;
-    protected string $uri;
+    protected UriInterface $uri;
+    protected array $serverParams;
+    protected array $cookieParams;
     protected array $queryParams;
-    protected array $bodyParams;
-    protected array $files;
-    protected array $routeParams = [];
+    protected array $uploadedFiles;
+    protected null|array|object $parsedBody;
+    protected array $attributes = [];
 
-    /**
-     * Constructor for the Request class.
-     *
-     * @param array $parameters An array of parameters for the request.
-     */
-    public function __construct(protected array $parameters = [])
+    public function __construct()
     {
-        $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $this->uri = $_SERVER['REQUEST_URI'] ?? '/';
-        $this->headers = $this->parseHeaders();
-
-        // If custom parameters are provided, use them, otherwise default to $_GET and $_POST
-        $this->queryParams = $parameters['query'] ?? $_GET;
-        $this->bodyParams = $parameters['body'] ?? $_POST;
-        $this->files = $parameters['files'] ?? $_FILES;
+        $this->method        = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $this->uri           = new Uri($_SERVER['REQUEST_URI'] ?? '/');
+        $this->serverParams  = $_SERVER;
+        $this->cookieParams  = $_COOKIE;
+        $this->queryParams   = $_GET;
+        $this->parsedBody    = $_POST;
+        $this->uploadedFiles = $_FILES;
+        $this->body          = new Stream();
     }
 
-    /**
-     * Magic getter method to access route parameters.
-     *
-     * This method allows for accessing route parameters as if they were properties
-     * of the object. If the requested parameter does not exist, it returns null.
-     *
-     * @param string $name The name of the route parameter to retrieve.
-     * @return mixed The value of the route parameter, or null if it does not exist.
-     */
-    public function __get($name)
-    {
-        return $this->routeParams[$name] ?? null;
-    }
+    // -- RequestInterface methods (from PSR-7) --
 
-    /**
-     * Sets the route parameters.
-     *
-     * @param array $params An associative array of route parameters.
-     *
-     * @return void
-     */
-    public function setRouteParams(array $params): void
+    public function getRequestTarget(): string
     {
-        $this->routeParams = $params;
+        return $this->uri->getPath() . ($this->uri->getQuery() ? '?' . $this->uri->getQuery() : '');
     }
-
-    /**
-     * Retrieves all headers from the request.
-     *
-     * @return array An associative array of headers.
-     */
-    protected function parseHeaders(): array
+    public function withRequestTarget(string $target): static
     {
-        $headers = [];
-        foreach ($_SERVER as $key => $value) {
-            if (str_starts_with($key, 'HTTP_')) {
-                $header = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($key, 5)))));
-                $headers[strtolower($header)] = $value;
-            }
-        }
-        return $headers;
+        // you could parse target into path/query here
+        $clone = clone $this;
+        return $clone;
     }
-
-    /**
-     * Get HTTP method (GET, POST, PUT, DELETE, etc.).
-     *
-     * @return string
-     */
     public function getMethod(): string
     {
         return $this->method;
     }
-
-    /**
-     * Retrieves a value from headers.
-     *
-     * @param string $key The key of the header to retrieve.
-     * @return string|null The value of the header if it exists, or null if it does not.
-     */
-    public function getHeader(string $key): ?string
+    public function withMethod(string $method): static
     {
-        $key = strtolower($key);
-        return $this->headers[$key] ?? null;
+        $clone = clone $this;
+        $clone->method = $method;
+        return $clone;
     }
-
-    /**
-     * Get request URI.
-     *
-     * @return string
-     */
-    public function getUri(): string
+    public function getUri(): UriInterface
     {
         return $this->uri;
     }
-
-    /**
-     * Retrieves a value from query parameters.
-     *
-     * @param string $key The key of the query parameter.
-     * @return mixed|null The value if it exists, or null if not found.
-     */
-    public function getQueryParam(string $key): mixed
+    public function withUri(UriInterface $uri, bool $preserveHost = false): static
     {
-        return $this->queryParams[$key] ?? null;
+        $clone = clone $this;
+        $clone->uri = $uri;
+        return $clone;
     }
 
-    /**
-     * Retrieves a value from body parameters (POST data).
-     *
-     * @param string $key The key of the body parameter.
-     * @return mixed|null The value if it exists, or null if not found.
-     */
-    public function getBodyParam(string $key): mixed
+    // -- ServerRequestInterface methods --
+
+    public function getServerParams(): array
     {
-        return $this->bodyParams[$key] ?? null;
+        return $this->serverParams;
     }
 
-    /**
-     * Retrieves a value from the request parameters.
-     *
-     * @param string $key The key of the parameter to retrieve.
-     * @return mixed The value of the parameter if it exists, or null if it does not.
-     */
-    public function get(string $key): mixed
+    public function getCookieParams(): array
     {
-        return $this->parameters[$key] ?? null;
+        return $this->cookieParams;
+    }
+    public function withCookieParams(array $cookies): static
+    {
+        $clone = clone $this;
+        $clone->cookieParams = $cookies;
+        return $clone;
     }
 
-    /**
-     * Retrieves a file from uploaded files.
-     *
-     * @param string $key The key of the file to retrieve.
-     * @return mixed The file data if it exists, or null if it does not.
-     */
-    public function getFile(string $key): mixed
+    public function getQueryParams(): array
     {
-        return $this->files[$key] ?? null;
+        return $this->queryParams;
+    }
+    public function withQueryParams(array $query): static
+    {
+        $clone = clone $this;
+        $clone->queryParams = $query;
+        return $clone;
     }
 
-    /**
-     * Retrieves all files from uploaded.
-     *
-     * @return mixed The files data if it exists, or null if it does not.
-     */
-    public function getFiles(): mixed
+    public function getUploadedFiles(): array
     {
-        return $this->files ?? null;
+        return $this->uploadedFiles;
+    }
+    public function withUploadedFiles(array $files): static
+    {
+        $clone = clone $this;
+        $clone->uploadedFiles = $files;
+        return $clone;
+    }
+
+    public function getParsedBody(): null|array|object
+    {
+        return $this->parsedBody;
+    }
+    public function withParsedBody(null|array|object $data): static
+    {
+        $clone = clone $this;
+        $clone->parsedBody = $data;
+        return $clone;
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+    public function getAttribute(string $name, mixed $default = null): mixed
+    {
+        return $this->attributes[$name] ?? $default;
+    }
+    public function withAttribute(string $name, mixed $value): static
+    {
+        $clone = clone $this;
+        $clone->attributes[$name] = $value;
+        return $clone;
+    }
+    public function withoutAttribute(string $name): static
+    {
+        $clone = clone $this;
+        unset($clone->attributes[$name]);
+        return $clone;
     }
 }

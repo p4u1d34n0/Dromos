@@ -2,6 +2,8 @@
 
 namespace Dromos;
 
+use Dromos\Env\EnvLoader;
+
 use Closure;
 use Dromos\Middleware\RequestParameters;
 use Dromos\HTTP\Request;    // implements ServerRequestInterface
@@ -34,6 +36,14 @@ class Router implements RequestHandlerInterface
 
     /** @var MiddlewareInterface[] */
     private array $middlewareStack = [];
+
+    public static function initialize(): void
+    {
+        $cacheFile = EnvLoader::get('ROUTER_CACHE_FILE');
+        if ($cacheFile) {
+            self::enableCache($cacheFile);
+        }
+    }
 
     // ────────────────────────────────────────────────────────────────────────────────
     // Route registration (static)

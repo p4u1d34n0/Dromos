@@ -15,12 +15,18 @@ use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Middleware\MiddlewareInterface;
 use Dromos\Http\Middleware\RequestHandlerInterface;
 
+use Dromos\Traits\RouteCacheTrait;
+
+
 /**
  * PSR-15–style Router for Dromos
  */
 class Router implements RequestHandlerInterface
 {
-    /** @var array<string,array<string,Closure|array>> */
+
+    use RouteCacheTrait;
+
+    /** @var array<int,array{method:string,path:string,handler:mixed}> */
     protected static array $routes = [];
 
     /** @var array<int,array> */
@@ -63,9 +69,20 @@ class Router implements RequestHandlerInterface
 
     protected static function addRoute(string $method, string $url, $target): string
     {
-        self::$routes[$method][$url] = self::checkTarget($target);
+        $route = [
+            'method'  => strtoupper($method),
+            'path'    => $url,
+            'handler' => self::checkTarget($target),
+        ];
+
+        self::$routes[$method][$url] = $route['handler'];
+
+        // Track the route for caching
+        self::trackRouteForCache($route);
+
         return self::class;
     }
+
 
     /** @return Closure|array */
     protected static function checkTarget($target)
@@ -155,11 +172,14 @@ class Router implements RequestHandlerInterface
             $method = $request->getMethod();
             $path   = $request->getUri()->getPath();
 
-            if (! isset(self::$routes[$method])) {
+            // Determine the routes to use (cached or standard)
+            $routes = self::$useCache ? self::$compiledRoutes : self::$routes;
+
+            if (! isset($routes[$method])) {
                 throw new RouterException("Method not allowed: $method");
             }
 
-            foreach (self::$routes[$method] as $routeUrl => $target) {
+            foreach ($routes[$method] as $routeUrl => $target) {
                 // Exact match
                 if ($routeUrl === $path) {
                     return $this->invokeTarget($target, [], $request);
@@ -177,6 +197,7 @@ class Router implements RequestHandlerInterface
             return RouterExceptionHandler::handle($e);
         }
     }
+
 
     // ────────────────────────────────────────────────────────────────────────────────
     // Extract route parameters based on placeholders

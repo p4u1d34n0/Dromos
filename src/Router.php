@@ -180,13 +180,15 @@ class Router implements RequestHandlerInterface
     {
         try {
             $method = $request->getMethod();
-            $path   = $request->getUri()->getPath();
+            $path = $request->getUri()->getPath();
 
             // Determine the routes to use (cached or standard)
             $routes = self::$useCache ? self::$compiledRoutes : self::$routes;
 
-            if (! isset($routes[$method])) {
-                throw new RouterException("Method not allowed: $method");
+            if (!isset($routes[$method])) {
+                // Get available methods for this route
+                $available = array_keys($routes);
+                throw RouterException::methodNotAllowed($available);
             }
 
             foreach ($routes[$method] as $routeUrl => $target) {
@@ -197,13 +199,17 @@ class Router implements RequestHandlerInterface
 
                 // Parameterized match
                 $params = $this->extractParams($routeUrl, $path);
-                if (! empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
+                if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
                     return $this->invokeTarget($target, $params, $request);
                 }
             }
 
-            throw new RouterException("Route not found: $path");
+            throw RouterException::routeNotFound($path);
+        } catch (RouterException $e) {
+            // Handle router-specific exceptions with the correct status code and args
+            return RouterExceptionHandler::handle($e, $e->getStatusCode(), $e->getArgs());
         } catch (\Throwable $e) {
+            // Handle any other exceptions with a generic 500 error
             return RouterExceptionHandler::handle($e);
         }
     }

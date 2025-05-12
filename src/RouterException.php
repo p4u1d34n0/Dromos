@@ -2,107 +2,114 @@
 
 namespace Dromos;
 
-use Dromos\RouterExceptionHandler;
-
 /**
  * Class RouterException
  *
- * This class extends the RouterExceptionHandler and provides methods to handle
- * various routing exceptions such as "Method Not Allowed", "Route Not Found",
- * and "Target Not Found". Each method generates an appropriate exception message
- * and delegates the handling to the RouterExceptionHandler with the corresponding
- * HTTP response code.
- *
- * Methods:
- * - MethodNotAllowed(array $available = []): void
- *   Handles the "Method Not Allowed" exception by generating a message indicating
- *   the requested HTTP method is not allowed and includes available methods if provided.
- *   Delegates the handling to RouterExceptionHandler with a 405 response code.
- *
- * - RouteNotFound(): void
- *   Handles the scenario where a route is not found by triggering the RouterExceptionHandler
- *   with a message indicating the route was not found and sets the HTTP response code to 404.
- *
- * - TargetNotFound(array $missing = null): void
- *   Handles the case when a target route is not found by processing an array of missing routes
- *   and triggers the appropriate exception handling mechanism with a 404 response code.
- *   If the target route is not found, this method will throw a RouterExceptionHandler with a 404 response code.
+ * This class represents exceptions thrown during routing.
+ * It extends \Exception and works with RouterExceptionHandler to produce 
+ * appropriate HTTP responses.
  */
-class RouterException extends RouterExceptionHandler
+class RouterException extends \Exception
 {
+    /**
+     * @var int HTTP status code
+     */
+    protected int $statusCode;
 
     /**
-     * Handles the "Method Not Allowed" exception.
-     *
-     * This method generates an exception message indicating that the requested
-     * HTTP method is not allowed. If available methods are provided, they will
-     * be included in the message. The method then delegates the handling of the
-     * exception to the `RouterExceptionHandler` with a 405 response code.
-     *
-     * @param array $available An array of available HTTP methods.
-     *
-     * @return void
+     * @var array Additional arguments
      */
-    public static function MethodNotAllowed($available = []): void
-    {
-        $message = 'Method not allowed' . ($available ? '. Available methods: ' . implode(', ', $available) : '');
-        self::handle(
-            e: new RouterExceptionHandler(message: $message),
-            errorcode: 405
-        );
+    protected array $args;
+
+    /**
+     * Constructor
+     *
+     * @param string $message Exception message
+     * @param int $statusCode HTTP status code
+     * @param array $args Additional arguments
+     * @param \Throwable|null $previous Previous exception
+     */
+    public function __construct(
+        string $message = "",
+        int $statusCode = 500,
+        array $args = [],
+        \Throwable $previous = null
+    ) {
+        parent::__construct($message, $statusCode, $previous);
+        $this->statusCode = $statusCode;
+        $this->args = $args;
     }
 
     /**
-     * Handles the scenario where a route is not found.
+     * Get the HTTP status code
      *
-     * This method triggers the RouterExceptionHandler with a message indicating
-     * that the route was not found and sets the HTTP response code to 404.
-     *
-     * @return void
+     * @return int
      */
-    public static function RouteNotFound(): void
+    public function getStatusCode(): int
     {
-
-        self::handle(
-            e: new RouterExceptionHandler(message: 'Route not found'),
-            errorcode: 404
-        );
+        return $this->statusCode;
     }
 
     /**
-     * Handles the case when a target route is not found.
+     * Get additional arguments
      *
-     * This method processes an array of missing routes and triggers the appropriate
-     * exception handling mechanism with a 404 response code.
-     *
-     * @param array|null $missing An array of missing routes, where each route is represented
-     *                            as an array with the class and method that could not be found.
-     *
-     * @return void
-     *
-     * @throws RouterExceptionHandler If the target route is not found, this method will throw
-     *                                a RouterExceptionHandler with a 404 response code.
+     * @return array
      */
-    public static function TargetNotFound(array $missing = null): void
+    public function getArgs(): array
     {
+        return $this->args;
+    }
 
-        $missingRoutes = array_map(callback: function ($route): array {
-            return [$route[0]::class => $route[1]];
-        }, array: $missing);
-
-        if (!empty($missingRoutes)) {
-            self::handle(
-                e: new RouterExceptionHandler(message: 'Missing Target Methods'),
-                errorcode: 404,
-                args: ['Missing Routes' => $missingRoutes]
-            );
-            exit;
+    /**
+     * Creates a "Method Not Allowed" exception
+     *
+     * @param array $available Available HTTP methods
+     * @return static
+     */
+    public static function methodNotAllowed(array $available = []): self
+    {
+        $message = 'Method not allowed';
+        if (!empty($available)) {
+            $message .= '. Available methods: ' . implode(', ', $available);
         }
 
-        self::handle(
-            e: new RouterExceptionHandler(message: 'Target not found'),
-            errorcode: 404,
-            args: $missingRoutes
-        );
+        return new self($message, 405, ['available_methods' => $available]);
+    }
+
+    /**
+     * Creates a "Route Not Found" exception
+     *
+     * @param string|null $path The route path that wasn't found
+     * @return static
+     */
+    public static function routeNotFound(?string $path = null): self
+    {
+        $message = 'Route not found';
+        if ($path) {
+            $message .= ': ' . $path;
+        }
+
+        return new self($message, 404);
+    }
+
+    /**
+     * Creates a "Target Not Found" exception
+     *
+     * @param array|null $missing Missing routes information
+     * @return static
+     */
+    public static function targetNotFound(?array $missing = null): self
+    {
+        $missingRoutes = [];
+
+        if ($missing) {
+            $missingRoutes = array_map(function ($route): array {
+                return [$route[0]::class => $route[1]];
+            }, $missing);
+
+            return new self('Missing Target Methods', 404, ['missing_routes' => $missingRoutes]);
+        }
+
+        return new self('Target not found', 404);
     }
 }

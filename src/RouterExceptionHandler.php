@@ -2,48 +2,40 @@
 
 namespace Dromos;
 
-use Exception;
-use Throwable;
+use Dromos\Http\Message\ResponseInterface;
+use Dromos\Http\Stream;
+use Dromos\HTTP\Response;
 
-
-/**
- * Class RouterExceptionHandler
- *
- * This class extends the base Exception class and provides a static method to handle exceptions
- * by setting the HTTP response status code and displaying an appropriate error page.
- *
- * @package Router
- */
-class RouterExceptionHandler extends Exception
+class RouterExceptionHandler
 {
-
     /**
-     * Handles exceptions by setting the response status code and displaying an appropriate error page.
-     *
-     * @param Throwable $e The exception that was thrown.
-     * @param int $responseCode The HTTP response code to set. Defaults to 500.
-     * @param mixed $args Additional arguments that may be used in the future. Defaults to null.
-     *
-     * @return void
+     * Handle any Throwable during routing/dispatch and return a PSR-7 ResponseInterface.
      */
-
-    public static function handle(Throwable $e, $errorcode = 500, $args = []): void
+    public static function handle(\Throwable $e): ResponseInterface
     {
+        // Log it
+        error_log('[RouterException] ' . $e->getMessage());
 
-        // Set the response status code
-        http_response_code(response_code: $errorcode);
+        // Start with a fresh PSR-7 Response
+        $response = new Response();
 
-        // Determine the path of the error page based on the response code
-        $errorPage = __DIR__ . '/views/errors/error.php';
+        // 1) Set status 500
+        $response = $response->withStatus(500);
 
-        // Check if the error page exists, otherwise show a generic error page
-        if (file_exists(filename: $errorPage)) {
-            include($errorPage);
-        } else {
-            // Fallback to a generic error message
-            throw new RouterException(message: 'An error occurred', code: $errorcode, previous: $e);
-        }
-        exit; // Stop further execution
+        // 2) Set Content-Type header
+        $response = $response->withHeader('Content-Type', 'text/html; charset=UTF-8');
 
+        // 3) Build the error body
+        $body = '<h1>Internal Server Error</h1>'
+            . '<p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES) . '</p>';
+
+        // 4) Create a PSR-7 stream and write the body
+        $stream = new Stream();
+        $stream->write($body);
+
+        // 5) Attach the stream
+        $response = $response->withBody($stream);
+
+        return $response;
     }
 }

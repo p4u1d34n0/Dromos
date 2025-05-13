@@ -14,10 +14,4 @@ class HelloWorldController
     {
         $this->service = new HelloWorldService();
     }
-
-    public function handle(Request $request, Response $response): void
-    {
-        $message = $this->service->sayHello();
-        $response->json(data: ['message' => $message]);
-    }
 }

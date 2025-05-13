@@ -1,6 +1,6 @@
 <?php
 
-namespace Dromos\Http;
+namespace Dromos\Http\Message;
 
 use Dromos\Http\Message\StreamInterface;
 

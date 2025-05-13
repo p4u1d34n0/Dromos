@@ -3,11 +3,19 @@
 namespace Dromos\Http;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Message\StreamInterface;
+use Dromos\Traits\MessageTrait;
+
+use Dromos\Http\Message\Stream;
+
+/**
+ * Class Response
+ *
+ * @package Dromos\Http
+ */
 
 class Response implements ResponseInterface
 {
-    use MessageTrait; // implements headers, body, protocolVersion
+    use MessageTrait;
 
     protected int $statusCode = 200;
     protected string $reasonPhrase = 'OK';

@@ -3,8 +3,22 @@
 namespace Dromos\Http;
 
 use Dromos\Http\Message\ServerRequestInterface;
-use Dromos\Http\Message\StreamInterface;
 use Dromos\Http\Message\UriInterface;
+use Dromos\Http\Message\Stream;
+
+use Dromos\Traits\MessageTrait;
+
+/**
+ * Class Request
+ *
+ * This class implements the PSR-7 ServerRequestInterface.
+ * It represents an HTTP request and provides methods to access
+ * request data such as headers, query parameters, and body content.
+ *
+ * @package Dromos\Http
+ * @see https://www.php-fig.org/psr/psr-7/
+ * @see https://www.php-fig.org/psr/psr-15/
+ */
 
 class Request implements ServerRequestInterface
 {

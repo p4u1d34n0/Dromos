@@ -35,13 +35,13 @@ This section provides an overview of the functionality and operation of the Rout
 
 By default, the following public functions are required to exist in the specified controller:
 
-- `get`
-- `post`
-- `put`
-- `patch`
-- `delete`
-- `options`
-- `head`
+- `Get`
+- `Post`
+- `Put`
+- `Patch`
+- `Delete`
+- `Options`
+- `Head`
 
 ```php
 Router::Resource(
@@ -74,7 +74,7 @@ You can define which methods to use with the resource group:
 ## Using Closure Functions
 
 ```php
-Router::GET(url: "/home/{id}", target: function (Request $request, Response $response) {
+Router::Get(url: "/home/{id}", target: function (Request $request, Response $response) {
     echo "The ID is " . $response->get('id');
 });
 ```
@@ -82,27 +82,19 @@ Router::GET(url: "/home/{id}", target: function (Request $request, Response $res
 ## Using Controllers
 
 ```php
-Router::GET("/home/{id}",       [SomeController::class, 'getMethodHandler']);
-Router::PUT("/home/{id}",       [SomeController::class, 'putMethodHandler']);
-Router::POST("/home/{id}",      [SomeController::class, 'postMethodHandler']);
-Router::HEAD("/home/{id}",      [SomeController::class, 'headMethodHandler']);
-Router::PATCH("/home/{id}",     [SomeController::class, 'patchMethodHandler']);
-Router::DELETE("/home/{id}",    [SomeController::class, 'deleteMethodHandler']);
-Router::OPTIONS("/home/{id}",   [SomeController::class, 'optionsMethodHandler']);
+Router::Get("/home/{id}",       [SomeController::class, 'getMethodHandler']);
+Router::Put("/home/{id}",       [SomeController::class, 'putMethodHandler']);
+Router::Post("/home/{id}",      [SomeController::class, 'postMethodHandler']);
+Router::Head("/home/{id}",      [SomeController::class, 'headMethodHandler']);
+Router::Patch("/home/{id}",     [SomeController::class, 'patchMethodHandler']);
+Router::Delete("/home/{id}",    [SomeController::class, 'deleteMethodHandler']);
+Router::Options("/home/{id}",   [SomeController::class, 'optionsMethodHandler']);
 ```
 
 ## Returning JSON
 
 ```php
-Router::GET(url: "/home/{id}", target: function (Request $request, Response $response) {
+Router::Get(url: "/home/{id}", target: function (Request $request, Response $response) {
     return $response->json(['message' => $request->get('id')]);
 });
 ```
-
-## Route Definition
-
-You define a route with placeholders using curly braces (e.g., `/data/{id}/user/{user_id}`).
-
-### Work In Progress
-
-The idea here is to produce a lightweight PHP router for Composer inclusion.

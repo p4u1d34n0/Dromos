@@ -3,7 +3,7 @@
 namespace Dromos;
 
 use Dromos\Router;
-
+use Dromos\RouterException;
 
 /**
  * Class RouteResource
@@ -105,13 +105,15 @@ class RouteResource
     public function register(): void
     {
         foreach ($this->methods as $method) {
-            if (!in_array(needle: $method, haystack: $this->excludedMethods)) {
-                $controllerMethod = strtolower(string: $method);
-                Router::addRoute(
-                    method: $method,
-                    url: $this->url,
-                    target: [$this->controller, $controllerMethod]
-                );
+            if (!in_array($method, $this->excludedMethods)) {
+                $controllerMethod = strtolower($method);
+                $target = [$this->controller, $controllerMethod];
+                $methodFunction = ucfirst(strtolower($method));
+                if (method_exists(Router::class, $methodFunction)) {
+                    Router::$methodFunction($this->url, $target);
+                } else {
+                    throw new RouterException("Method $method not found in Router class.");
+                }
             }
         }
     }

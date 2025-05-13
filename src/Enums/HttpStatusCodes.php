@@ -3,7 +3,7 @@
 namespace Dromos\Enums;
 
 // enum class for HTTP status codes
-class StatusCodes
+class HttpStatusCodes
 {
 
     const HTTP_STATUS_CODES = array(

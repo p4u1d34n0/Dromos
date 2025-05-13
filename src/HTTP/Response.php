@@ -42,4 +42,19 @@ class Response implements ResponseInterface
     {
         return $this->reasonPhrase;
     }
+
+
+    /* 
+    * Set the response body to a json object
+    * @param string $body The body content
+    * @param int $status The HTTP status code (default: 200)
+    * @return static
+    */
+
+    public function json(array $data, int $status = 200): static
+    {
+        $this->headers['Content-Type'] = ['application/json'];
+        $this->body->write(json_encode($data));
+        return $this->withStatus($status);
+    }
 }

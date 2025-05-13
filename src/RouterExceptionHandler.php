@@ -3,8 +3,10 @@
 namespace Dromos;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Stream;
+use Dromos\Http\Message\Stream;
 use Dromos\HTTP\Response;
+
+use Dromos\Enums\HttpStatusCodes;
 
 /**
  * Exception handler for router-related exceptions
@@ -64,18 +66,7 @@ class RouterExceptionHandler
      */
     private static function getStatusText(int $code): string
     {
-        $texts = [
-            400 => 'Bad Request',
-            401 => 'Unauthorized',
-            403 => 'Forbidden',
-            404 => 'Not Found',
-            405 => 'Method Not Allowed',
-            500 => 'Internal Server Error',
-            501 => 'Not Implemented',
-            502 => 'Bad Gateway',
-            503 => 'Service Unavailable'
-        ];
-
-        return $texts[$code] ?? 'Error';
+        // Map of HTTP status codes to their text representation
+        return HttpStatusCodes::HTTP_STATUS_CODES[$code] ?? 'Error';
     }
 }

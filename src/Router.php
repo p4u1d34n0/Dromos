@@ -8,6 +8,7 @@ use Closure;
 use Dromos\Middleware\RequestParameters;
 use Dromos\HTTP\Request;    // implements ServerRequestInterface
 use Dromos\HTTP\Response;   // implements ResponseInterface
+use Dromos\RouteGroup;
 use Dromos\RouteResource;
 use Dromos\RouterException;
 use Dromos\RouterExceptionHandler;
@@ -36,6 +37,9 @@ class Router implements RequestHandlerInterface
 
     /** @var MiddlewareInterface[] */
     private array $middlewareStack = [];
+
+    /** @var array<string, MiddlewareInterface[]> Per-route middleware keyed by "METHOD:/path" */
+    protected static array $routeMiddleware = [];
 
     public static function initialize(): void
     {
@@ -69,12 +73,50 @@ class Router implements RequestHandlerInterface
     {
         return self::addRoute('OPTIONS', $url, $target);
     }
+    public static function Delete(string $url, $target): string
+    {
+        return self::addRoute('DELETE', $url, $target);
+    }
+    public static function Patch(string $url, $target): string
+    {
+        return self::addRoute('PATCH',  $url, $target);
+    }
 
     public static function Resource(string $url, string $controller): RouteResource
     {
         $resource = new RouteResource($url, $controller);
         $resource->register();
         return $resource;
+    }
+
+    /**
+     * Create a route group with a shared URL prefix.
+     *
+     * @param string   $prefix   URL prefix for all routes in the group
+     * @param callable $callback Receives a RouteGroup instance for route registration
+     * @return RouteGroup
+     */
+    public static function group(string $prefix, callable $callback): RouteGroup
+    {
+        $group = new RouteGroup($prefix);
+        $callback($group);
+        return $group;
+    }
+
+    /**
+     * Register middleware for a specific route.
+     *
+     * @param string              $method     HTTP method
+     * @param string              $url        Route URL path
+     * @param MiddlewareInterface[] $middleware Array of middleware instances
+     */
+    public static function setRouteMiddleware(string $method, string $url, array $middleware): void
+    {
+        $key = strtoupper($method) . ':' . $url;
+        if (!isset(self::$routeMiddleware[$key])) {
+            self::$routeMiddleware[$key] = [];
+        }
+        self::$routeMiddleware[$key] = array_merge(self::$routeMiddleware[$key], $middleware);
     }
 
     protected static function addRoute(string $method, string $url, $target): string
@@ -194,12 +236,30 @@ class Router implements RequestHandlerInterface
             foreach ($routes[$method] as $routeUrl => $target) {
                 // Exact match
                 if ($routeUrl === $path) {
+                    $routeKey = $method . ':' . $routeUrl;
+                    if (isset(self::$routeMiddleware[$routeKey])) {
+                        return $this->runRouteMiddleware(
+                            self::$routeMiddleware[$routeKey],
+                            $request,
+                            $target,
+                            []
+                        );
+                    }
                     return $this->invokeTarget($target, [], $request);
                 }
 
                 // Parameterized match
                 $params = $this->extractParams($routeUrl, $path);
                 if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
+                    $routeKey = $method . ':' . $routeUrl;
+                    if (isset(self::$routeMiddleware[$routeKey])) {
+                        return $this->runRouteMiddleware(
+                            self::$routeMiddleware[$routeKey],
+                            $request,
+                            $target,
+                            $params
+                        );
+                    }
                     return $this->invokeTarget($target, $params, $request);
                 }
             }
@@ -234,6 +294,69 @@ class Router implements RequestHandlerInterface
 
         array_shift($values); // drop full match
         return array_combine($names, $values);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────
+    // Per-route middleware pipeline
+    // ────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Execute per-route middleware before invoking the route target.
+     *
+     * Builds a PSR-15 handler chain: each middleware wraps the next, with the
+     * final handler calling invokeTarget on the matched route.
+     *
+     * @param MiddlewareInterface[]   $middlewareList
+     * @param ServerRequestInterface  $request
+     * @param mixed                   $target
+     * @param array                   $params
+     * @return ResponseInterface
+     */
+    private function runRouteMiddleware(
+        array $middlewareList,
+        ServerRequestInterface $request,
+        $target,
+        array $params
+    ): ResponseInterface {
+        // Final handler invokes the route target with params
+        $invoker = fn(ServerRequestInterface $req) => $this->invokeTarget($target, $params, $req);
+        $finalHandler = new class($invoker) implements RequestHandlerInterface {
+            private \Closure $invoker;
+
+            public function __construct(\Closure $invoker)
+            {
+                $this->invoker = $invoker;
+            }
+
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return ($this->invoker)($request);
+            }
+        };
+
+        // Wrap middleware around the final handler (reverse order)
+        $handler = $finalHandler;
+        for ($i = count($middlewareList) - 1; $i >= 0; $i--) {
+            $mw   = $middlewareList[$i];
+            $next = $handler;
+            $handler = new class($mw, $next) implements RequestHandlerInterface {
+                private MiddlewareInterface    $middleware;
+                private RequestHandlerInterface $nextHandler;
+
+                public function __construct(MiddlewareInterface $mw, RequestHandlerInterface $next)
+                {
+                    $this->middleware  = $mw;
+                    $this->nextHandler = $next;
+                }
+
+                public function handle(ServerRequestInterface $request): ResponseInterface
+                {
+                    return $this->middleware->handle($request, $this->nextHandler);
+                }
+            };
+        }
+
+        return $handler->handle($request);
     }
 
     // ────────────────────────────────────────────────────────────────────────────────

@@ -43,18 +43,47 @@ class Response implements ResponseInterface
         return $this->reasonPhrase;
     }
 
-
-    /* 
-    * Set the response body to a json object
-    * @param string $body The body content
-    * @param int $status The HTTP status code (default: 200)
-    * @return static
-    */
-
     public function json(array $data, int $status = 200): static
     {
-        $this->headers['Content-Type'] = ['application/json'];
-        $this->body->write(json_encode($data));
-        return $this->withStatus($status);
+        $clone = $this->withStatus($status)
+                      ->withHeader('Content-Type', 'application/json');
+        $clone->getBody()->write(json_encode($data));
+        return $clone;
+    }
+
+    public function text(string $data, int $status = 200): static
+    {
+        $clone = $this->withStatus($status)
+                      ->withHeader('Content-Type', 'text/plain');
+        $clone->getBody()->write($data);
+        return $clone;
+    }
+
+    public function html(string $data, int $status = 200): static
+    {
+        $clone = $this->withStatus($status)
+                      ->withHeader('Content-Type', 'text/html; charset=UTF-8');
+        $clone->getBody()->write($data);
+        return $clone;
+    }
+
+    public function noContent(): static
+    {
+        return $this->withStatus(204);
+    }
+
+    public function created(array $data = []): static
+    {
+        $clone = $this->withStatus(201)
+                      ->withHeader('Content-Type', 'application/json');
+        $clone->getBody()->write(json_encode($data));
+        return $clone;
+    }
+
+    public function redirect(string $url, int $status = 302): static
+    {
+        $url = str_replace(["\r", "\n"], '', $url);
+        return $this->withStatus($status)
+                    ->withHeader('Location', $url);
     }
 }

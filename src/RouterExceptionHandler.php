@@ -36,21 +36,23 @@ class RouterExceptionHandler
         $response = $response->withStatus($errorCode);
 
         // 2) Set Content-Type header
-        $response = $response->withHeader('Content-Type', 'text/html; charset=UTF-8');
+        $response = $response->withHeader('Content-Type', 'application/json');
 
-        // 3) Build the error body
-        $body = '<h1>' . self::getStatusText($errorCode) . '</h1>' .
-            '<p>' . htmlspecialchars($e->getMessage(), ENT_QUOTES) . '</p>';
+        // 3) Build the error payload
+        $payload = [
+            'error'   => self::getStatusText($errorCode),
+            'message' => $e->getMessage(),
+            'status'  => $errorCode,
+        ];
 
         // Add additional arguments if provided
         if (!empty($args)) {
-            $body .= '<h2>Additional Information</h2>';
-            $body .= '<pre>' . htmlspecialchars(print_r($args, true), ENT_QUOTES) . '</pre>';
+            $payload['details'] = $args;
         }
 
         // 4) Create a PSR-7 stream and write the body
         $stream = new Stream();
-        $stream->write($body);
+        $stream->write(json_encode($payload, JSON_UNESCAPED_SLASHES));
 
         // 5) Attach the stream
         $response = $response->withBody($stream);

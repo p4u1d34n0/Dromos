@@ -43,6 +43,20 @@ class Request implements ServerRequestInterface
         $this->parsedBody    = $_POST;
         $this->uploadedFiles = $_FILES;
         $this->body          = new Stream();
+
+        $raw = file_get_contents('php://input');
+        if ($raw !== false && $raw !== '') {
+            $this->body->write($raw);
+            $this->body->rewind();
+
+            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+            if (str_contains($contentType, 'application/json')) {
+                $decoded = json_decode($raw, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $this->parsedBody = $decoded;
+                }
+            }
+        }
     }
 
     // -- RequestInterface methods (from PSR-7) --

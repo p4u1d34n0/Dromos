@@ -1,5 +1,5 @@
 <?php
-// src/Http/ResponseInterface.php
+
 namespace Dromos\Http\Message;
 
 interface ResponseInterface extends MessageInterface

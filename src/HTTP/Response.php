@@ -27,6 +27,17 @@ class Response implements ResponseInterface
         $this->body         = new Stream();
     }
 
+    public function __clone()
+    {
+        $original = $this->body;
+        $this->body = new Stream();
+        $contents = (string) $original;
+        if ($contents !== '') {
+            $this->body->write($contents);
+            $this->body->rewind();
+        }
+    }
+
     public function getStatusCode(): int
     {
         return $this->statusCode;

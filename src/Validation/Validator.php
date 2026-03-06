@@ -120,7 +120,7 @@ class Validator
         $this->validated = true;
 
         foreach ($this->rules as $field => $ruleString) {
-            $rules = explode('|', $ruleString);
+            $rules = $this->parseRules($ruleString);
             $value = $this->data[$field] ?? null;
             $fieldErrors = [];
 
@@ -198,11 +198,11 @@ class Validator
 
             'regex' => ($param === null)
                 ? "The {$field} rule 'regex' requires a pattern."
-                : (($value !== null && $value !== '' && !preg_match($param, (string) $value))
-                    ? "The {$field} field format is invalid."
-                    : null),
+                : $this->validateRegex($field, $value, $param),
 
-            default => null,
+            default => throw new \InvalidArgumentException(
+                "Unknown validation rule '{$ruleName}' on field '{$field}'."
+            ),
         };
     }
 
@@ -296,5 +296,75 @@ class Validator
         }
 
         return null;
+    }
+
+    /**
+     * Parse a pipe-delimited rule string, respecting regex delimiters.
+     *
+     * Regex patterns may contain pipe characters (e.g. regex:/^(foo|bar)$/)
+     * which must not be treated as rule separators.
+     *
+     * @param string $ruleString The pipe-delimited rule string
+     *
+     * @return string[]
+     */
+    private function parseRules(string $ruleString): array
+    {
+        $rules = [];
+        $current = '';
+        $inRegex = false;
+
+        for ($i = 0; $i < strlen($ruleString); $i++) {
+            $char = $ruleString[$i];
+
+            if (!$inRegex && $char === '|') {
+                if ($current !== '') {
+                    $rules[] = $current;
+                }
+                $current = '';
+                continue;
+            }
+
+            $current .= $char;
+
+            if (!$inRegex && str_starts_with($current, 'regex:')) {
+                $inRegex = true;
+            }
+        }
+
+        if ($current !== '') {
+            $rules[] = $current;
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Validate a field value against a regex pattern.
+     *
+     * Suppresses preg_match warnings to prevent malformed patterns or
+     * ReDoS-prone expressions from leaking error output.
+     *
+     * @param string $field The field name
+     * @param mixed  $value The field value
+     * @param string $param The regex pattern
+     *
+     * @return string|null
+     */
+    private function validateRegex(string $field, mixed $value, string $param): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $result = @preg_match($param, (string) $value);
+
+        if ($result === false) {
+            return "The {$field} rule 'regex' has an invalid pattern.";
+        }
+
+        return $result === 0
+            ? "The {$field} field format is invalid."
+            : null;
     }
 }

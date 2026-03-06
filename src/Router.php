@@ -49,6 +49,17 @@ class Router implements RequestHandlerInterface
         }
     }
 
+    /**
+     * Reset all static route state. Useful for testing.
+     */
+    public static function reset(): void
+    {
+        self::$routes = [];
+        self::$missingRoutes = [];
+        self::$routeMiddleware = [];
+        self::disableCache();
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────
     // Route registration (static)
     // ────────────────────────────────────────────────────────────────────────────────
@@ -85,7 +96,6 @@ class Router implements RequestHandlerInterface
     public static function Resource(string $url, string $controller): RouteResource
     {
         $resource = new RouteResource($url, $controller);
-        $resource->register();
         return $resource;
     }
 
@@ -380,9 +390,9 @@ class Router implements RequestHandlerInterface
 
         foreach ($ref->getParameters() as $p) {
             $type = $p->getType()?->getName();
-            if ($type === ServerRequestInterface::class) {
+            if ($type !== null && is_a($type, ServerRequestInterface::class, true)) {
                 $args[] = $request;
-            } elseif ($type === Response::class) {
+            } elseif ($type !== null && is_a($type, ResponseInterface::class, true)) {
                 $args[] = new Response();
             } elseif (array_key_exists($p->getName(), $params)) {
                 $args[] = $params[$p->getName()];

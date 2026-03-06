@@ -44,14 +44,27 @@ class Request implements ServerRequestInterface
         $this->uploadedFiles = $_FILES;
         $this->body          = new Stream();
 
-        $raw = file_get_contents('php://input');
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $maxBodySize = 1048576; // 1MB default limit
+
+        if ($contentLength > 0 && $contentLength <= $maxBodySize) {
+            $raw = file_get_contents('php://input');
+        } elseif ($contentLength === 0) {
+            $raw = file_get_contents('php://input');
+            if ($raw !== false && strlen($raw) > $maxBodySize) {
+                $raw = '';
+            }
+        } else {
+            $raw = '';
+        }
+
         if ($raw !== false && $raw !== '') {
             $this->body->write($raw);
             $this->body->rewind();
 
             $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
             if (str_contains($contentType, 'application/json')) {
-                $decoded = json_decode($raw, true);
+                $decoded = json_decode($raw, true, 64);
                 if (json_last_error() === JSON_ERROR_NONE) {
                     $this->parsedBody = $decoded;
                 }

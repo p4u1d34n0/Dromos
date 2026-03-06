@@ -61,6 +61,11 @@ class RateLimitMiddleware implements MiddlewareInterface
             ];
         }
 
+        // Garbage collect expired entries (probabilistic, ~1 in 50 requests)
+        if (mt_rand(1, 50) === 1) {
+            self::evictExpired($now, $this->windowSeconds);
+        }
+
         self::$store[$clientIp]['count']++;
 
         $count       = self::$store[$clientIp]['count'];
@@ -107,6 +112,18 @@ class RateLimitMiddleware implements MiddlewareInterface
         $response = $response->withHeader('X-RateLimit-Reset', (string) $windowReset);
 
         return $response;
+    }
+
+    /**
+     * Evict expired entries from the store to prevent unbounded memory growth.
+     */
+    private static function evictExpired(int $now, int $windowSeconds): void
+    {
+        foreach (self::$store as $ip => $entry) {
+            if (($now - $entry['window_start']) >= $windowSeconds) {
+                unset(self::$store[$ip]);
+            }
+        }
     }
 
     /**

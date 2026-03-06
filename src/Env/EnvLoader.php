@@ -26,6 +26,10 @@ class EnvLoader
 
     public static function get(string $key, $default = null)
     {
-        return $_ENV[$key] ?? getenv($key) ?: $default;
+        if (array_key_exists($key, $_ENV)) {
+            return $_ENV[$key];
+        }
+        $env = getenv($key);
+        return $env !== false ? $env : $default;
     }
 }

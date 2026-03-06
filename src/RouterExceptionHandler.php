@@ -38,10 +38,14 @@ class RouterExceptionHandler
         // 2) Set Content-Type header
         $response = $response->withHeader('Content-Type', 'application/json');
 
-        // 3) Build the error payload
+        // 3) Build the error payload — only expose messages from RouterException, not generic Throwables
+        $message = ($e instanceof RouterException)
+            ? $e->getMessage()
+            : 'Internal Server Error';
+
         $payload = [
             'error'   => self::getStatusText($errorCode),
-            'message' => $e->getMessage(),
+            'message' => $message,
             'status'  => $errorCode,
         ];
 

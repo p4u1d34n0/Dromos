@@ -48,6 +48,12 @@ class CorsMiddleware implements MiddlewareInterface
         $this->allowedHeaders  = $config['allowed_headers'] ?? ['Content-Type', 'Authorization', 'X-Requested-With'];
         $this->maxAge          = $config['max_age'] ?? 86400;
         $this->allowCredentials = $config['allow_credentials'] ?? false;
+
+        if ($this->allowCredentials && in_array('*', $this->allowedOrigins, true)) {
+            throw new \InvalidArgumentException(
+                'CORS: allow_credentials cannot be used with wildcard allowed_origins. Specify explicit origins.'
+            );
+        }
     }
 
     public function handle(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -78,14 +84,13 @@ class CorsMiddleware implements MiddlewareInterface
             return $response;
         }
 
-        // When credentials are enabled, the spec requires a specific origin (not wildcard)
-        if ($this->allowCredentials && in_array('*', $this->allowedOrigins, true)) {
-            $allowOriginValue = $origin;
-        } else {
-            $allowOriginValue = in_array('*', $this->allowedOrigins, true) ? '*' : $origin;
-        }
+        $allowOriginValue = in_array('*', $this->allowedOrigins, true) ? '*' : $origin;
 
         $response = $response->withHeader('Access-Control-Allow-Origin', $allowOriginValue);
+
+        if ($allowOriginValue !== '*') {
+            $response = $response->withAddedHeader('Vary', 'Origin');
+        }
         $response = $response->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods));
         $response = $response->withHeader('Access-Control-Allow-Headers', implode(', ', $this->allowedHeaders));
         $response = $response->withHeader('Access-Control-Max-Age', (string) $this->maxAge);

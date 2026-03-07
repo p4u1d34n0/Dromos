@@ -1,0 +1,56 @@
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: benchmark/Dockerfile
+    ports:
+      - "9501:9501"
+    volumes:
+      - ../src:/app/src:ro
+      - ./:/app/benchmark:ro
+    command: php /app/benchmark/src/gateway.php
+    depends_on:
+      user-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+    environment:
+      - SWOOLE_WORKERS=4
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: benchmark/Dockerfile
+    expose:
+      - "9502"
+    volumes:
+      - ../src:/app/src:ro
+      - ./:/app/benchmark:ro
+    command: php /app/benchmark/src/users.php
+    environment:
+      - SWOOLE_WORKERS=4
+
+  product-service:
+    build:
+      context: ..
+      dockerfile: benchmark/Dockerfile
+    expose:
+      - "9503"
+    volumes:
+      - ../src:/app/src:ro
+      - ./:/app/benchmark:ro
+    command: php /app/benchmark/src/products.php
+    environment:
+      - SWOOLE_WORKERS=4
+
+  benchmark:
+    build:
+      context: ..
+      dockerfile: benchmark/Dockerfile.bench
+    depends_on:
+      - gateway
+    volumes:
+      - ./:/app/benchmark:ro
+    entrypoint: ["sh", "/app/benchmark/bench.sh"]
+    profiles:
+      - bench

@@ -13,7 +13,7 @@
 * **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
 * **Input Validation** — Built-in validator with pipe-delimited rules for API input.
 * **JSON-First API Design** — JSON request body parsing, JSON error responses, and response helpers.
-* **Minimal Emitter Layer** — Built-in SapiEmitter handles status line, headers, and body output. Implement EmitterInterface to target other runtimes like OpenSwoole.
+* **Minimal Emitter Layer** — Built-in `Emitter` handles status line, headers, and body output. Implement `EmitterInterface` to target other runtimes like OpenSwoole.
 * **Micro-Service Ready** — Perfect for REST, RPC, or event-driven micro-services with zero framework magic.
 
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
@@ -416,7 +416,7 @@ Router::clearCache();
 Router::disableCache();
 ```
 
-**Note:** Route caching uses `serialize()`. Routes using Closure handlers cannot be cached — use controller targets for cacheable routes.
+**Note:** Route caching uses `json_encode()`. Routes using Closure handlers cannot be cached — use controller targets for cacheable routes.
 
 ---
 
@@ -480,6 +480,21 @@ For unit testing, use `Router::reset()` between tests to clear all registered ro
 ```php
 Router::reset();
 RateLimitMiddleware::resetStore();
+```
+
+### Creating Test Requests
+
+Use `Request::create()` to build requests without depending on PHP superglobals:
+
+```php
+use Dromos\Http\Request;
+
+$request = Request::create(
+    method: 'POST',
+    uri: '/api/users',
+    headers: ['Content-Type' => 'application/json'],
+    parsedBody: ['name' => 'Jane']
+);
 ```
 
 ---

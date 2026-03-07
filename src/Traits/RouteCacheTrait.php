@@ -10,7 +10,7 @@ trait RouteCacheTrait
     /** @var string|null */
     protected static ?string $cacheFile = null;
 
-    /** @var array<int,array{method:string,path:string,handler:mixed}> */
+    /** @var array<string, array<string, mixed>> Cached routes keyed by [method][path] => handler */
     protected static array $compiledRoutes = [];
 
     /**
@@ -52,7 +52,7 @@ trait RouteCacheTrait
     /**
      * Return the currently cached route definitions.
      *
-     * @return array<int,array{method:string,path:string,handler:mixed}>
+     * @return array<string, array<string, mixed>>
      */
     public static function cachedRoutes(): array
     {
@@ -80,9 +80,23 @@ trait RouteCacheTrait
      */
     protected static function trackRouteForCache(array $route): void
     {
-        if (static::$useCache) {
-            static::$compiledRoutes[] = $route;
-            static::writeCacheFile();
+        if (!static::$useCache) {
+            return;
         }
+
+        $handler = $route['handler'];
+
+        // Closures cannot be cached — skip silently
+        if ($handler instanceof \Closure) {
+            return;
+        }
+
+        // Convert [instance, method] to [className, method] for JSON serialization
+        if (is_array($handler) && is_object($handler[0])) {
+            $handler = [get_class($handler[0]), $handler[1]];
+        }
+
+        static::$compiledRoutes[$route['method']][$route['path']] = $handler;
+        static::writeCacheFile();
     }
 }

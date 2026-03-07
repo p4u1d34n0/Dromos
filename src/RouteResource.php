@@ -84,7 +84,8 @@ class RouteResource
      * Defines the API resource routes and allows excluding specific HTTP methods.
      *
      * @param array $methods Optional array of HTTP methods to exclude. If not provided,
-     *                       defaults to excluding 'GET', 'POST', 'PUT', 'PATCH', and 'DELETE'.
+     *                       defaults to excluding 'OPTIONS' and 'HEAD', keeping only
+     *                       the standard API methods (GET, POST, PUT, PATCH, DELETE).
      *                       Methods are automatically converted to uppercase.
      * @return self Returns the current instance for method chaining.
      */

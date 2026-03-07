@@ -237,49 +237,67 @@ class Router implements RequestHandlerInterface
             // Determine the routes to use (cached or standard)
             $routes = self::$useCache ? self::$compiledRoutes : self::$routes;
 
-            if (!isset($routes[$method])) {
-                // Get available methods for this route
-                $available = array_keys($routes);
-                throw RouterException::methodNotAllowed($available);
+            // Try to match the path under the requested method
+            if (isset($routes[$method])) {
+                foreach ($routes[$method] as $routeUrl => $target) {
+                    // Exact match
+                    if ($routeUrl === $path) {
+                        $routeKey = $method . ':' . $routeUrl;
+                        if (isset(self::$routeMiddleware[$routeKey])) {
+                            return $this->runRouteMiddleware(
+                                self::$routeMiddleware[$routeKey],
+                                $request,
+                                $target,
+                                []
+                            );
+                        }
+                        return $this->invokeTarget($target, [], $request);
+                    }
+
+                    // Parameterized match
+                    $params = $this->extractParams($routeUrl, $path);
+                    if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
+                        $routeKey = $method . ':' . $routeUrl;
+                        if (isset(self::$routeMiddleware[$routeKey])) {
+                            return $this->runRouteMiddleware(
+                                self::$routeMiddleware[$routeKey],
+                                $request,
+                                $target,
+                                $params
+                            );
+                        }
+                        return $this->invokeTarget($target, $params, $request);
+                    }
+                }
             }
 
-            foreach ($routes[$method] as $routeUrl => $target) {
-                // Exact match
-                if ($routeUrl === $path) {
-                    $routeKey = $method . ':' . $routeUrl;
-                    if (isset(self::$routeMiddleware[$routeKey])) {
-                        return $this->runRouteMiddleware(
-                            self::$routeMiddleware[$routeKey],
-                            $request,
-                            $target,
-                            []
-                        );
-                    }
-                    return $this->invokeTarget($target, [], $request);
+            // No match found — check if path exists under other methods (405 vs 404)
+            $allowedMethods = [];
+            foreach ($routes as $otherMethod => $otherRoutes) {
+                if ($otherMethod === $method) {
+                    continue;
                 }
+                foreach ($otherRoutes as $routeUrl => $target) {
+                    if ($routeUrl === $path) {
+                        $allowedMethods[] = $otherMethod;
+                        break;
+                    }
+                    $params = $this->extractParams($routeUrl, $path);
+                    if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
+                        $allowedMethods[] = $otherMethod;
+                        break;
+                    }
+                }
+            }
 
-                // Parameterized match
-                $params = $this->extractParams($routeUrl, $path);
-                if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
-                    $routeKey = $method . ':' . $routeUrl;
-                    if (isset(self::$routeMiddleware[$routeKey])) {
-                        return $this->runRouteMiddleware(
-                            self::$routeMiddleware[$routeKey],
-                            $request,
-                            $target,
-                            $params
-                        );
-                    }
-                    return $this->invokeTarget($target, $params, $request);
-                }
+            if (!empty($allowedMethods)) {
+                throw RouterException::methodNotAllowed($allowedMethods);
             }
 
             throw RouterException::routeNotFound($path);
         } catch (RouterException $e) {
-            // Handle router-specific exceptions with the correct status code and args
             return RouterExceptionHandler::handle($e, $e->getStatusCode(), $e->getArgs());
         } catch (\Throwable $e) {
-            // Handle any other exceptions with a generic 500 error
             return RouterExceptionHandler::handle($e);
         }
     }
@@ -386,6 +404,11 @@ class Router implements RequestHandlerInterface
         // Inject route parameters as request attributes
         foreach ($params as $key => $val) {
             $request = $request->withAttribute($key, $val);
+        }
+
+        // Lazily instantiate controller if target is [className, method] strings
+        if (is_array($target) && is_string($target[0]) && class_exists($target[0])) {
+            $target = [new $target[0](), $target[1]];
         }
 
         // Build argument list via reflection

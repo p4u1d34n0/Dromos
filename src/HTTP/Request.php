@@ -32,6 +32,7 @@ class Request implements ServerRequestInterface
     protected array $uploadedFiles;
     protected null|array|object $parsedBody;
     protected array $attributes = [];
+    protected ?string $requestTarget = null;
 
     public function __construct()
     {
@@ -76,16 +77,50 @@ class Request implements ServerRequestInterface
         }
     }
 
+    /**
+     * Create a Request with explicit parameters, useful for testing.
+     */
+    public static function create(
+        string $method = 'GET',
+        string $uri = '/',
+        array $serverParams = [],
+        array $headers = [],
+        array $queryParams = [],
+        null|array|object $parsedBody = null,
+        string $body = ''
+    ): static {
+        $request = new static();
+        $request->method = $method;
+        $request->uri = new Uri($uri);
+        $request->serverParams = $serverParams;
+        $request->cookieParams = [];
+        $request->queryParams = $queryParams;
+        $request->parsedBody = $parsedBody;
+        $request->uploadedFiles = [];
+        $request->body = new Stream();
+        if ($body !== '') {
+            $request->body->write($body);
+            $request->body->rewind();
+        }
+        foreach ($headers as $name => $value) {
+            $request->headers[$name] = is_array($value) ? $value : [(string)$value];
+        }
+        return $request;
+    }
+
     // -- RequestInterface methods (from PSR-7) --
 
     public function getRequestTarget(): string
     {
+        if (isset($this->requestTarget)) {
+            return $this->requestTarget;
+        }
         return $this->uri->getPath() . ($this->uri->getQuery() ? '?' . $this->uri->getQuery() : '');
     }
     public function withRequestTarget(string $target): static
     {
-        // you could parse target into path/query here
         $clone = clone $this;
+        $clone->requestTarget = $target;
         return $clone;
     }
     public function getMethod(): string

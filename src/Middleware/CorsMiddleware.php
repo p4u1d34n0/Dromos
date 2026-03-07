@@ -72,6 +72,11 @@ class CorsMiddleware implements MiddlewareInterface
         // For normal requests, pass through to the next handler then add CORS headers.
         $response = $handler->handle($request);
 
+        // Only add CORS headers when an Origin header is present (cross-origin request)
+        if ($origin === '') {
+            return $response;
+        }
+
         return $this->addCorsHeaders($response, $origin);
     }
 

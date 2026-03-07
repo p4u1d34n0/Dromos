@@ -64,18 +64,18 @@ trait MessageTrait
 
     public function withHeader(string $name, $value): static
     {
-        $clone = clone $this;
         $values = is_array($value) ? array_values($value) : [(string)$value];
         $this->validateHeaderNameAndValue($name, $values);
+        $clone = clone $this;
         $clone->headers[$name] = $values;
         return $clone;
     }
 
     public function withAddedHeader(string $name, $value): static
     {
-        $clone = clone $this;
         $val = is_array($value) ? array_values($value) : [(string)$value];
         $this->validateHeaderNameAndValue($name, $val);
+        $clone = clone $this;
         if (isset($clone->headers[$name])) {
             $clone->headers[$name] = array_merge($clone->headers[$name], $val);
         } else {

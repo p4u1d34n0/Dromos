@@ -313,6 +313,8 @@ class Validator
         $rules = [];
         $current = '';
         $inRegex = false;
+        $regexDelimiter = null;
+        $regexStarted = false;
 
         for ($i = 0; $i < strlen($ruleString); $i++) {
             $char = $ruleString[$i];
@@ -327,8 +329,28 @@ class Validator
 
             $current .= $char;
 
-            if (!$inRegex && str_starts_with($current, 'regex:')) {
+            if (!$inRegex && str_starts_with($current, 'regex:') && strlen($current) === 6) {
                 $inRegex = true;
+                $regexStarted = false;
+                $regexDelimiter = null;
+                continue;
+            }
+
+            if ($inRegex && $regexDelimiter === null && strlen($current) > 6) {
+                $regexDelimiter = $char;
+                $regexStarted = true;
+                continue;
+            }
+
+            if ($inRegex && $regexStarted && $char === $regexDelimiter) {
+                // Check for pattern modifiers after closing delimiter (e.g. /pattern/i)
+                while ($i + 1 < strlen($ruleString) && ctype_alpha($ruleString[$i + 1])) {
+                    $i++;
+                    $current .= $ruleString[$i];
+                }
+                $inRegex = false;
+                $regexDelimiter = null;
+                $regexStarted = false;
             }
         }
 

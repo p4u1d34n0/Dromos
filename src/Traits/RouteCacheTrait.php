@@ -23,7 +23,7 @@ trait RouteCacheTrait
 
         if (file_exists($path)) {
             $data   = @file_get_contents($path);
-            $parsed = $data !== false ? @unserialize($data) : [];
+            $parsed = $data !== false ? json_decode($data, true) : [];
             static::$compiledRoutes = is_array($parsed) ? $parsed : [];
         }
     }
@@ -68,11 +68,9 @@ trait RouteCacheTrait
             return;
         }
 
-        file_put_contents(
-            static::$cacheFile,
-            serialize(static::$compiledRoutes),
-            LOCK_EX
-        );
+        $json = json_encode(static::$compiledRoutes);
+        file_put_contents(static::$cacheFile, $json, LOCK_EX);
+        chmod(static::$cacheFile, 0644);
     }
 
     /**

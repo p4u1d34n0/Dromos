@@ -295,8 +295,16 @@ class Router implements RequestHandlerInterface
         preg_match_all('/\{([^}]+)\}/', $route, $matches);
         $names = $matches[1] ?? [];
 
-        // Build regex
-        $pattern = preg_replace('/\{[^}]+\}/', '([^/]+)', $route);
+        // Split route into static segments and placeholders, escape static parts
+        $parts = preg_split('/(\{[^}]+\})/', $route, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $pattern = '';
+        foreach ($parts as $part) {
+            if (preg_match('/^\{[^}]+\}$/', $part)) {
+                $pattern .= '([^/]+)';
+            } else {
+                $pattern .= preg_quote($part, '#');
+            }
+        }
 
         if (! preg_match("#^{$pattern}$#", $path, $values)) {
             return [];

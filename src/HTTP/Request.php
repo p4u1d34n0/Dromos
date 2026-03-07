@@ -47,15 +47,19 @@ class Request implements ServerRequestInterface
         $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
         $maxBodySize = 1048576; // 1MB default limit
 
-        if ($contentLength > 0 && $contentLength <= $maxBodySize) {
+        if ($contentLength > $maxBodySize) {
+            $raw = '';
+        } elseif ($contentLength > 0) {
             $raw = file_get_contents('php://input');
-        } elseif ($contentLength === 0) {
-            $raw = file_get_contents('php://input');
+        } else {
+            $stream = fopen('php://input', 'r');
+            $raw = $stream !== false ? stream_get_contents($stream, $maxBodySize + 1) : '';
+            if ($stream !== false) {
+                fclose($stream);
+            }
             if ($raw !== false && strlen($raw) > $maxBodySize) {
                 $raw = '';
             }
-        } else {
-            $raw = '';
         }
 
         if ($raw !== false && $raw !== '') {

@@ -94,6 +94,18 @@ class Response implements ResponseInterface
     public function redirect(string $url, int $status = 302): static
     {
         $url = str_replace(["\r", "\n"], '', $url);
+
+        // Allow relative URLs (starting with / but not //) and http(s) schemes only
+        if (!str_starts_with($url, '/') || str_starts_with($url, '//')) {
+            $scheme = parse_url($url, PHP_URL_SCHEME);
+            if ($scheme !== null && !in_array(strtolower($scheme), ['http', 'https'], true)) {
+                throw new \InvalidArgumentException('Redirect URL must use http or https scheme.');
+            }
+            if (str_starts_with($url, '//')) {
+                throw new \InvalidArgumentException('Protocol-relative redirect URLs are not allowed.');
+            }
+        }
+
         return $this->withStatus($status)
                     ->withHeader('Location', $url);
     }

@@ -16,6 +16,8 @@ use Dromos\RouterException;
 class RouteResource
 {
 
+    protected bool $registered = false;
+
     // Define all methods to be excluded by default
     protected $excludedMethods = ['OPTIONS', 'HEAD'];
 
@@ -30,6 +32,14 @@ class RouteResource
      * @param string $controller The controller associated with the route.
      */
     public function __construct(protected string $url, protected string $controller) {}
+
+
+    public function __destruct()
+    {
+        if (!$this->registered) {
+            $this->register();
+        }
+    }
 
 
     /**
@@ -74,7 +84,8 @@ class RouteResource
      * Defines the API resource routes and allows excluding specific HTTP methods.
      *
      * @param array $methods Optional array of HTTP methods to exclude. If not provided,
-     *                       defaults to excluding 'GET', 'POST', 'PUT', 'PATCH', and 'DELETE'.
+     *                       defaults to excluding 'OPTIONS' and 'HEAD', keeping only
+     *                       the standard API methods (GET, POST, PUT, PATCH, DELETE).
      *                       Methods are automatically converted to uppercase.
      * @return self Returns the current instance for method chaining.
      */
@@ -88,7 +99,7 @@ class RouteResource
             return $this;
         }
 
-        $this->excludedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        $this->excludedMethods = ['OPTIONS', 'HEAD'];
         return $this;
     }
 
@@ -104,6 +115,8 @@ class RouteResource
      */
     public function register(): void
     {
+        $this->registered = true;
+
         foreach ($this->methods as $method) {
             if (!in_array($method, $this->excludedMethods)) {
                 $controllerMethod = strtolower($method);

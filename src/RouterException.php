@@ -86,7 +86,8 @@ class RouterException extends \Exception
     {
         $message = 'Route not found';
         if ($path) {
-            $message .= ': ' . $path;
+            $sanitised = preg_replace('/[\x00-\x1f\x7f]/', '', $path);
+            $message .= ': ' . $sanitised;
         }
 
         return new self($message, 404);

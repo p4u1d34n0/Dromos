@@ -16,8 +16,12 @@ class EnvLoader
                 continue;
             }
 
-            [$name, $value] = array_map('trim', explode('=', $line, 2));
-            if (!array_key_exists($name, $_ENV)) {
+            $parts = explode('=', $line, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+            [$name, $value] = array_map('trim', $parts);
+            if ($name === '' || !array_key_exists($name, $_ENV)) {
                 $_ENV[$name] = $value;
                 putenv("$name=$value");
             }
@@ -26,6 +30,10 @@ class EnvLoader
 
     public static function get(string $key, $default = null)
     {
-        return $_ENV[$key] ?? getenv($key) ?: $default;
+        if (array_key_exists($key, $_ENV)) {
+            return $_ENV[$key];
+        }
+        $env = getenv($key);
+        return $env !== false ? $env : $default;
     }
 }

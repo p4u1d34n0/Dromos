@@ -1,5 +1,5 @@
 <?php
-// src/Http/MessageInterface.php
+
 namespace Dromos\Http\Message;
 
 use Dromos\Http\Message\StreamInterface;

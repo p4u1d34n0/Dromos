@@ -32,6 +32,7 @@ class Request implements ServerRequestInterface
     protected array $uploadedFiles;
     protected null|array|object $parsedBody;
     protected array $attributes = [];
+    protected ?string $requestTarget = null;
 
     public function __construct()
     {
@@ -43,18 +44,83 @@ class Request implements ServerRequestInterface
         $this->parsedBody    = $_POST;
         $this->uploadedFiles = $_FILES;
         $this->body          = new Stream();
+
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $maxBodySize = 1048576; // 1MB default limit
+
+        if ($contentLength > $maxBodySize) {
+            $raw = '';
+        } elseif ($contentLength > 0) {
+            $raw = file_get_contents('php://input');
+        } else {
+            $stream = fopen('php://input', 'r');
+            $raw = $stream !== false ? stream_get_contents($stream, $maxBodySize + 1) : '';
+            if ($stream !== false) {
+                fclose($stream);
+            }
+            if ($raw !== false && strlen($raw) > $maxBodySize) {
+                $raw = '';
+            }
+        }
+
+        if ($raw !== false && $raw !== '') {
+            $this->body->write($raw);
+            $this->body->rewind();
+
+            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+            if (str_contains($contentType, 'application/json')) {
+                $decoded = json_decode($raw, true, 64);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $this->parsedBody = $decoded;
+                }
+            }
+        }
+    }
+
+    /**
+     * Create a Request with explicit parameters, useful for testing.
+     */
+    public static function create(
+        string $method = 'GET',
+        string $uri = '/',
+        array $serverParams = [],
+        array $headers = [],
+        array $queryParams = [],
+        null|array|object $parsedBody = null,
+        string $body = ''
+    ): static {
+        $request = new static();
+        $request->method = $method;
+        $request->uri = new Uri($uri);
+        $request->serverParams = $serverParams;
+        $request->cookieParams = [];
+        $request->queryParams = $queryParams;
+        $request->parsedBody = $parsedBody;
+        $request->uploadedFiles = [];
+        $request->body = new Stream();
+        if ($body !== '') {
+            $request->body->write($body);
+            $request->body->rewind();
+        }
+        foreach ($headers as $name => $value) {
+            $request->headers[$name] = is_array($value) ? $value : [(string)$value];
+        }
+        return $request;
     }
 
     // -- RequestInterface methods (from PSR-7) --
 
     public function getRequestTarget(): string
     {
+        if (isset($this->requestTarget)) {
+            return $this->requestTarget;
+        }
         return $this->uri->getPath() . ($this->uri->getQuery() ? '?' . $this->uri->getQuery() : '');
     }
     public function withRequestTarget(string $target): static
     {
-        // you could parse target into path/query here
         $clone = clone $this;
+        $clone->requestTarget = $target;
         return $clone;
     }
     public function getMethod(): string

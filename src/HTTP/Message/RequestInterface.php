@@ -1,5 +1,5 @@
 <?php
-// src/Http/RequestInterface.php
+
 namespace Dromos\Http\Message;
 
 use Dromos\Http\Message\UriInterface;

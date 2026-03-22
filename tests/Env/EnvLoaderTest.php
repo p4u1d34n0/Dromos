@@ -156,6 +156,18 @@ final class EnvLoaderTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function test_get_falls_back_to_getenv_when_not_in_env_superglobal(): void
+    {
+        unset($_ENV['GETENV_ONLY']);
+        putenv('GETENV_ONLY=from_process');
+
+        $result = EnvLoader::get('GETENV_ONLY');
+
+        $this->assertSame('from_process', $result);
+
+        putenv('GETENV_ONLY');
+    }
+
     private function createEnvFile(string $content): string
     {
         $path = $this->tempDir . '/.env';

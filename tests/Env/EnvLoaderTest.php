@@ -26,6 +26,11 @@ final class EnvLoaderTest extends TestCase
 
     protected function tearDown(): void
     {
+        $addedKeys = array_diff_key($_ENV, $this->originalEnv);
+        foreach ($addedKeys as $key => $value) {
+            putenv($key);
+        }
+
         $_ENV = $this->originalEnv;
 
         $files = glob($this->tempDir . '/{,.}*', GLOB_BRACE);

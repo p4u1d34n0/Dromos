@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dromos\Env;
 
-class EnvLoader
+final class EnvLoader
 {
     public static function load(string $path): void
     {
@@ -12,28 +14,42 @@ class EnvLoader
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
-            if (strpos(trim($line), '#') === 0) {
+            $trimmedLine = trim($line);
+
+            if ($trimmedLine === '') {
                 continue;
             }
 
-            $parts = explode('=', $line, 2);
+            if (str_starts_with($trimmedLine, '#')) {
+                continue;
+            }
+
+            $parts = explode('=', $trimmedLine, 2);
             if (count($parts) !== 2) {
                 continue;
             }
+
             [$name, $value] = array_map('trim', $parts);
-            if ($name === '' || !array_key_exists($name, $_ENV)) {
+
+            if ($name === '') {
+                continue;
+            }
+
+            if (!array_key_exists($name, $_ENV)) {
                 $_ENV[$name] = $value;
                 putenv("$name=$value");
             }
         }
     }
 
-    public static function get(string $key, $default = null)
+    public static function get(string $key, ?string $default = null): ?string
     {
         if (array_key_exists($key, $_ENV)) {
             return $_ENV[$key];
         }
+
         $env = getenv($key);
+
         return $env !== false ? $env : $default;
     }
 }

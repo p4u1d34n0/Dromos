@@ -9,6 +9,18 @@ use InvalidArgumentException;
 
 final class UploadedFile implements UploadedFileInterface
 {
+    /** @var int[] Valid UPLOAD_ERR_* constants (0–8). */
+    private const VALID_ERRORS = [
+        UPLOAD_ERR_OK,
+        UPLOAD_ERR_INI_SIZE,
+        UPLOAD_ERR_FORM_SIZE,
+        UPLOAD_ERR_PARTIAL,
+        UPLOAD_ERR_NO_FILE,
+        UPLOAD_ERR_NO_TMP_DIR,
+        UPLOAD_ERR_CANT_WRITE,
+        UPLOAD_ERR_EXTENSION,
+    ];
+
     private StreamInterface $stream;
     private ?int $size;
     private int $error;
@@ -25,6 +37,12 @@ final class UploadedFile implements UploadedFileInterface
         ?string $clientMediaType = null,
         ?FileMoverInterface $fileMover = null
     ) {
+        if (!in_array($error, self::VALID_ERRORS, true)) {
+            throw new InvalidArgumentException(
+                'Invalid upload error code: ' . $error . '. Must be a valid UPLOAD_ERR_* constant (0-8).'
+            );
+        }
+
         $this->stream = $stream;
         $this->size = $size;
         $this->error = $error;
@@ -35,9 +53,16 @@ final class UploadedFile implements UploadedFileInterface
 
     public function getStream(): StreamInterface
     {
+        if ($this->error !== UPLOAD_ERR_OK) {
+            throw new RuntimeException(
+                'Cannot retrieve stream: upload error code ' . $this->error . '.'
+            );
+        }
+
         if ($this->moved) {
             throw new RuntimeException('Cannot retrieve stream after it has been moved.');
         }
+
         return $this->stream;
     }
 

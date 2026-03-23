@@ -134,4 +134,30 @@ final class UploadedFileTest extends TestCase
 
         $file->moveTo($this->tempDir . '/should_not_exist.txt');
     }
+
+    #[Test]
+    public function test_get_stream_throws_when_upload_error_is_not_ok(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $file = new UploadedFile($stream, 4, UPLOAD_ERR_PARTIAL);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cannot retrieve stream: upload error code 3.');
+
+        $file->getStream();
+    }
+
+    #[Test]
+    public function test_constructor_rejects_invalid_error_code(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid upload error code: 99.');
+
+        new UploadedFile($stream, 4, 99);
+    }
 }

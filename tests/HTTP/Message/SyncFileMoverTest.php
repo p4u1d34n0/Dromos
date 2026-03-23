@@ -9,6 +9,7 @@ use Dromos\Http\Message\SyncFileMover;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 use RuntimeException;
 
 #[CoversClass(SyncFileMover::class)]
@@ -62,5 +63,47 @@ final class SyncFileMoverTest extends TestCase
         $this->expectExceptionMessage('Failed to write uploaded file to target location.');
 
         $mover->moveTo($stream, '/nonexistent/directory/file.txt');
+    }
+
+    #[Test]
+    public function test_sync_file_mover_rejects_traversal_path(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $mover = new SyncFileMover();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Target path must not contain directory traversal sequences.');
+
+        $mover->moveTo($stream, $this->tempDir . '/../etc/passwd');
+    }
+
+    #[Test]
+    public function test_sync_file_mover_rejects_null_byte_path(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $mover = new SyncFileMover();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Target path must not contain null bytes.');
+
+        $mover->moveTo($stream, "/tmp/file\0.txt");
+    }
+
+    #[Test]
+    public function test_sync_file_mover_rejects_stream_wrapper_path(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $mover = new SyncFileMover();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Target path must not use a stream wrapper.');
+
+        $mover->moveTo($stream, 'php://output');
     }
 }

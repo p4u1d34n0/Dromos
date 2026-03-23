@@ -11,6 +11,10 @@ use RuntimeException;
  *
  * The implementation is responsible for rewinding/positioning the stream
  * before reading, and for writing the full stream contents to the target.
+ *
+ * WARNING: Implementors should validate the target path against directory
+ * traversal attacks (e.g. "../" sequences) before writing. Never trust
+ * user-supplied filenames as part of the target path without sanitisation.
  */
 interface FileMoverInterface
 {

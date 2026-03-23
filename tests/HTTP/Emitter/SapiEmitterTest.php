@@ -67,7 +67,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 200,
             reasonPhrase: 'OK',
-            protocolVersion: '1.1',
             headers: [],
             bodyContent: '',
         );
@@ -84,7 +83,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 200,
             reasonPhrase: 'OK',
-            protocolVersion: '1.1',
             headers: [
                 'content-type' => ['application/json'],
                 'x-custom' => ['value1', 'value2'],
@@ -106,7 +104,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 200,
             reasonPhrase: 'OK',
-            protocolVersion: '1.1',
             headers: [],
             bodyContent: 'Hello, Dromos!',
         );
@@ -128,7 +125,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 200,
             reasonPhrase: 'OK',
-            protocolVersion: '1.1',
             headers: [],
             bodyContent: '',
         );
@@ -147,7 +143,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 204,
             reasonPhrase: 'No Content',
-            protocolVersion: '1.1',
             headers: [],
             bodyContent: '',
         );
@@ -167,7 +162,6 @@ final class SapiEmitterTest extends TestCase
         $response = $this->createMockResponse(
             statusCode: 204,
             reasonPhrase: '',
-            protocolVersion: '1.1',
             headers: [],
             bodyContent: '',
         );
@@ -181,9 +175,9 @@ final class SapiEmitterTest extends TestCase
     private function createMockResponse(
         int $statusCode,
         string $reasonPhrase,
-        string $protocolVersion,
         array $headers,
         string $bodyContent,
+        string $protocolVersion = '1.1',
     ): ResponseInterface {
         $body = new Stream();
         if ($bodyContent !== '') {

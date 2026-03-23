@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dromos\Http\Message;
 
 use RuntimeException;
@@ -12,7 +14,7 @@ class UploadedFile implements UploadedFileInterface
     private int $error;
     private ?string $clientFilename;
     private ?string $clientMediaType;
-    private readonly FileMoverInterface $fileMover;
+    private FileMoverInterface $fileMover;
     private bool $moved = false;
 
     public function __construct(
@@ -41,6 +43,10 @@ class UploadedFile implements UploadedFileInterface
 
     public function moveTo(string $targetPath): void
     {
+        if ($this->error !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Cannot move uploaded file: upload error code ' . $this->error . '.');
+        }
+
         if ($this->moved) {
             throw new RuntimeException('File has already been moved.');
         }

@@ -115,6 +115,17 @@ final class EnvLoaderTest extends TestCase
         $this->assertSame('0', EnvLoader::get('APP_DEBUG', 'fallback'));
     }
 
+    public function test_it_skips_lines_with_empty_key(): void
+    {
+        $content = "=some_value\nDB_HOST=localhost\n";
+        $envFile = $this->createEnvFile($content);
+
+        EnvLoader::load($envFile);
+
+        $this->assertArrayNotHasKey('', $_ENV);
+        $this->assertSame('localhost', $_ENV['DB_HOST']);
+    }
+
     private function createEnvFile(string $content): string
     {
         $path = $this->fixtureDir . '/.env';

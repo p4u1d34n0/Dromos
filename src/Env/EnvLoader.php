@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Dromos\Env;
 
 class EnvLoader
@@ -13,6 +11,10 @@ class EnvLoader
      *
      * Must be called once at bootstrap — before $server->start() in Swoole/ReactPHP
      * contexts. Subsequent calls are safely ignored due to the static guard.
+     *
+     * Note: putenv() sets process-level environment which is shared across
+     * coroutines in Swoole workers. Read env values into application config
+     * at bootstrap rather than using getenv() per-request.
      */
     public static function load(string $path): void
     {
@@ -20,11 +22,17 @@ class EnvLoader
             return;
         }
 
+        self::$loaded = true;
+
         if (!file_exists($path)) {
             return;
         }
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return;
+        }
+
         foreach ($lines as $line) {
             if (str_starts_with(trim($line), '#')) {
                 continue;
@@ -35,13 +43,16 @@ class EnvLoader
                 continue;
             }
             [$name, $value] = array_map('trim', $parts);
-            if ($name === '' || !array_key_exists($name, $_ENV)) {
+
+            if ($name === '') {
+                continue;
+            }
+
+            if (!array_key_exists($name, $_ENV)) {
                 $_ENV[$name] = $value;
                 putenv("$name=$value");
             }
         }
-
-        self::$loaded = true;
     }
 
     public static function get(string $key, mixed $default = null): mixed
@@ -56,7 +67,9 @@ class EnvLoader
     }
 
     /**
-     * Reset the loaded guard. Intended for testing only.
+     * Reset the loaded guard.
+     *
+     * @internal For testing only — do not call in production code.
      */
     public static function reset(): void
     {

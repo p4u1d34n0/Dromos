@@ -6,7 +6,6 @@ namespace Dromos\Http\Emitter;
 
 use Dromos\Http\Message\ResponseInterface;
 
-
 /**
  * SAPI HTTP Emitter for Dromos
  *

@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dromos\Http\Emitter;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Emitter\EmitterInterface;
 
 
 /**
@@ -12,7 +13,7 @@ use Dromos\Http\Emitter\EmitterInterface;
  * Sends PSR-7 responses using PHP's built-in SAPI functions (header(), echo).
  * Suitable for traditional PHP-FPM / Apache mod_php environments.
  */
-class SapiEmitter implements EmitterInterface
+final class SapiEmitter implements EmitterInterface
 {
     /**
      * Whether headers have already been sent

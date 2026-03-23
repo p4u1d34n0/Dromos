@@ -12,6 +12,7 @@ class UploadedFile implements UploadedFileInterface
     private int $error;
     private ?string $clientFilename;
     private ?string $clientMediaType;
+    private readonly FileMoverInterface $fileMover;
     private bool $moved = false;
 
     public function __construct(
@@ -19,13 +20,15 @@ class UploadedFile implements UploadedFileInterface
         ?int $size,
         int $error,
         ?string $clientFilename = null,
-        ?string $clientMediaType = null
+        ?string $clientMediaType = null,
+        ?FileMoverInterface $fileMover = null
     ) {
         $this->stream = $stream;
         $this->size = $size;
         $this->error = $error;
         $this->clientFilename = $clientFilename;
         $this->clientMediaType = $clientMediaType;
+        $this->fileMover = $fileMover ?? new SyncFileMover();
     }
 
     public function getStream(): StreamInterface
@@ -46,19 +49,7 @@ class UploadedFile implements UploadedFileInterface
             throw new InvalidArgumentException('Target path must be a non-empty string.');
         }
 
-        $stream = $this->getStream();
-        $stream->rewind();
-
-        $dest = @fopen($targetPath, 'wb');
-        if ($dest === false) {
-            throw new RuntimeException("Unable to open target path: $targetPath");
-        }
-
-        while (!$stream->eof()) {
-            fwrite($dest, $stream->read(8192));
-        }
-
-        fclose($dest);
+        $this->fileMover->moveTo($this->getStream(), $targetPath);
         $this->moved = true;
     }
 

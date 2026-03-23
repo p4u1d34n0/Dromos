@@ -10,12 +10,14 @@ use Dromos\Http\Middleware\RequestHandlerInterface;
 use Dromos\Http\Request;
 use Dromos\Http\Response;
 use Dromos\Middleware\InMemoryRateLimitStore;
+use Dromos\Middleware\RateLimitEntry;
 use Dromos\Middleware\RateLimitMiddleware;
 use Dromos\Middleware\RateLimitStore;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(RateLimitMiddleware::class)]
+#[CoversClass(RateLimitEntry::class)]
 final class RateLimitMiddlewareTest extends TestCase
 {
     private FakeRequestHandler $handler;
@@ -108,10 +110,10 @@ final class RateLimitMiddlewareTest extends TestCase
 
         // Simulate the window expiring by backdating the stored entry.
         $entry = $store->get('10.0.0.1');
-        $store->set('10.0.0.1', [
-            'count' => $entry['count'],
-            'window_start' => time() - 120,
-        ], 60);
+        $store->set('10.0.0.1', new RateLimitEntry(
+            count: $entry->count,
+            windowStart: time() - 120,
+        ), 60);
 
         // After expiry the middleware should treat this as a fresh window.
         $response = $middleware->handle($request, $this->handler);
@@ -141,7 +143,7 @@ final class RateLimitMiddlewareTest extends TestCase
         // The injected store should have received the entry.
         $entry = $store->get('10.0.0.1');
         $this->assertNotNull($entry);
-        $this->assertSame(1, $entry['count']);
+        $this->assertSame(1, $entry->count);
     }
 
     public function test_it_decrements_remaining_count_on_each_request(): void
@@ -155,6 +157,38 @@ final class RateLimitMiddlewareTest extends TestCase
 
         $this->assertSame('2', $first->getHeaderLine('X-RateLimit-Remaining'));
         $this->assertSame('1', $second->getHeaderLine('X-RateLimit-Remaining'));
+    }
+
+    public function test_it_rejects_max_requests_below_one(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxRequests');
+
+        new RateLimitMiddleware(maxRequests: 0, windowSeconds: 60);
+    }
+
+    public function test_it_rejects_window_seconds_below_one(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('windowSeconds');
+
+        new RateLimitMiddleware(maxRequests: 10, windowSeconds: 0);
+    }
+
+    public function test_it_rejects_negative_max_requests(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maxRequests');
+
+        new RateLimitMiddleware(maxRequests: -5, windowSeconds: 60);
+    }
+
+    public function test_it_rejects_negative_window_seconds(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('windowSeconds');
+
+        new RateLimitMiddleware(maxRequests: 10, windowSeconds: -1);
     }
 
     private function createRequest(string $clientIp): ServerRequestInterface
@@ -183,16 +217,35 @@ final class FakeRequestHandler implements RequestHandlerInterface
  */
 final class FakeRateLimitStore implements RateLimitStore
 {
-    /** @var array<string, array{count: int, window_start: int}> */
+    /** @var array<string, RateLimitEntry> */
     private array $entries = [];
 
-    public function get(string $key): ?array
+    public function get(string $key): ?RateLimitEntry
     {
         return $this->entries[$key] ?? null;
     }
 
-    public function set(string $key, array $entry, int $ttlSeconds): void
+    public function set(string $key, RateLimitEntry $entry, int $ttlSeconds): void
     {
         $this->entries[$key] = $entry;
+    }
+
+    public function increment(string $key, int $windowSeconds): RateLimitEntry
+    {
+        $existing = $this->entries[$key] ?? null;
+        $now = time();
+
+        if ($existing === null || ($now - $existing->windowStart) >= $windowSeconds) {
+            $entry = new RateLimitEntry(count: 1, windowStart: $now);
+        } else {
+            $entry = new RateLimitEntry(
+                count: $existing->count + 1,
+                windowStart: $existing->windowStart,
+            );
+        }
+
+        $this->entries[$key] = $entry;
+
+        return $entry;
     }
 }

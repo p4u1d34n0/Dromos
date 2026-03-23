@@ -17,8 +17,14 @@ final class InMemoryRateLimitStore implements RateLimitStore
     /** @var array<string, array{count: int, window_start: int, ttl: int}> */
     private array $entries = [];
 
-    public function get(string $key): ?array
+    public function __construct(
+        private readonly int $maxEntries = 10_000,
+    ) {}
+
+    public function get(string $key): ?RateLimitEntry
     {
+        $this->maybeTriggerGc();
+
         if (!isset($this->entries[$key])) {
             return null;
         }
@@ -32,24 +38,76 @@ final class InMemoryRateLimitStore implements RateLimitStore
             return null;
         }
 
-        return [
-            'count' => $entry['count'],
-            'window_start' => $entry['window_start'],
-        ];
+        return new RateLimitEntry(
+            count: $entry['count'],
+            windowStart: $entry['window_start'],
+        );
     }
 
-    public function set(string $key, array $entry, int $ttlSeconds): void
+    public function set(string $key, RateLimitEntry $entry, int $ttlSeconds): void
     {
         $this->entries[$key] = [
-            'count' => $entry['count'],
-            'window_start' => $entry['window_start'],
+            'count' => $entry->count,
+            'window_start' => $entry->windowStart,
             'ttl' => $ttlSeconds,
         ];
 
-        // Probabilistic garbage collection (~1 in 50 writes).
+        $this->enforceEntryCap();
+        $this->maybeTriggerGc();
+    }
+
+    public function increment(string $key, int $windowSeconds): RateLimitEntry
+    {
+        $now = time();
+        $existing = $this->entries[$key] ?? null;
+
+        if ($existing === null || ($now - $existing['window_start']) >= $windowSeconds) {
+            $entry = new RateLimitEntry(count: 1, windowStart: $now);
+        } else {
+            $entry = new RateLimitEntry(
+                count: $existing['count'] + 1,
+                windowStart: $existing['window_start'],
+            );
+        }
+
+        $this->entries[$key] = [
+            'count' => $entry->count,
+            'window_start' => $entry->windowStart,
+            'ttl' => $windowSeconds,
+        ];
+
+        $this->enforceEntryCap();
+        $this->maybeTriggerGc();
+
+        return $entry;
+    }
+
+    private function maybeTriggerGc(): void
+    {
         if (mt_rand(1, 50) === 1) {
             $this->evictExpired();
         }
+    }
+
+    /**
+     * Enforce the maximum entry cap by evicting expired entries first,
+     * then oldest entries if still over the limit.
+     */
+    private function enforceEntryCap(): void
+    {
+        if (count($this->entries) <= $this->maxEntries) {
+            return;
+        }
+
+        $this->evictExpired();
+
+        if (count($this->entries) <= $this->maxEntries) {
+            return;
+        }
+
+        // Evict oldest entries by window_start to bring count under cap.
+        uasort($this->entries, static fn(array $a, array $b): int => $a['window_start'] <=> $b['window_start']);
+        $this->entries = array_slice($this->entries, count($this->entries) - $this->maxEntries, preserve_keys: true);
     }
 
     private function evictExpired(): void

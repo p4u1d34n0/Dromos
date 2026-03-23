@@ -27,6 +27,18 @@ final class RateLimitMiddleware implements MiddlewareInterface
         private readonly int $windowSeconds = 60,
         ?RateLimitStore $store = null,
     ) {
+        if ($maxRequests < 1) {
+            throw new \InvalidArgumentException(
+                'Rate limit maxRequests must be at least 1.'
+            );
+        }
+
+        if ($windowSeconds < 1) {
+            throw new \InvalidArgumentException(
+                'Rate limit windowSeconds must be at least 1.'
+            );
+        }
+
         $this->store = $store ?? new InMemoryRateLimitStore();
     }
 
@@ -35,24 +47,13 @@ final class RateLimitMiddleware implements MiddlewareInterface
         $clientIp = $request->getServerParams()['REMOTE_ADDR'] ?? '0.0.0.0';
         $now = time();
 
-        $entry = $this->store->get($clientIp);
+        $entry = $this->store->increment($clientIp, $this->windowSeconds);
 
-        // Initialise or reset the window if it has expired.
-        if ($entry === null || ($now - $entry['window_start']) >= $this->windowSeconds) {
-            $entry = [
-                'count' => 0,
-                'window_start' => $now,
-            ];
-        }
-
-        $entry['count']++;
-        $this->store->set($clientIp, $entry, $this->windowSeconds);
-
-        $windowReset = $entry['window_start'] + $this->windowSeconds;
-        $remaining = max(0, $this->maxRequests - $entry['count']);
+        $windowReset = $entry->windowStart + $this->windowSeconds;
+        $remaining = max(0, $this->maxRequests - $entry->count);
 
         // Rate limit exceeded.
-        if ($entry['count'] > $this->maxRequests) {
+        if ($entry->count > $this->maxRequests) {
             $retryAfter = $windowReset - $now;
 
             return $this->tooManyRequestsResponse($retryAfter, $windowReset);

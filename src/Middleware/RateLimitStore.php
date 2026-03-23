@@ -16,17 +16,23 @@ interface RateLimitStore
 {
     /**
      * Retrieve the rate-limit entry for a given key.
-     *
-     * @return array{count: int, window_start: int}|null
      */
-    public function get(string $key): ?array;
+    public function get(string $key): ?RateLimitEntry;
 
     /**
      * Store or overwrite the rate-limit entry for a given key.
      *
-     * @param array{count: int, window_start: int} $entry
      * @param int $ttlSeconds Maximum lifetime hint — storage backends may use
      *                        this to auto-expire entries.
      */
-    public function set(string $key, array $entry, int $ttlSeconds): void;
+    public function set(string $key, RateLimitEntry $entry, int $ttlSeconds): void;
+
+    /**
+     * Atomically increment the counter for the given key and return the updated entry.
+     *
+     * If the key does not exist or the window has expired, a new window is
+     * started with a count of 1. Implementations backed by shared storage
+     * (Redis, APCu) should use native atomic operations to avoid lost updates.
+     */
+    public function increment(string $key, int $windowSeconds): RateLimitEntry;
 }

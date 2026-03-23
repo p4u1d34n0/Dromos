@@ -1,4 +1,4 @@
-./node_modules
-./github
-./vendor
+node_modules/
+.github/
+vendor/
 .DS_Store

@@ -19,7 +19,11 @@ final class InMemoryRateLimitStore implements RateLimitStore
 
     public function __construct(
         private readonly int $maxEntries = 10_000,
-    ) {}
+    ) {
+        if ($maxEntries < 1) {
+            throw new \InvalidArgumentException('InMemoryRateLimitStore maxEntries must be at least 1.');
+        }
+    }
 
     public function get(string $key): ?RateLimitEntry
     {
@@ -105,9 +109,22 @@ final class InMemoryRateLimitStore implements RateLimitStore
             return;
         }
 
-        // Evict oldest entries by window_start to bring count under cap.
-        uasort($this->entries, static fn(array $a, array $b): int => $a['window_start'] <=> $b['window_start']);
-        $this->entries = array_slice($this->entries, count($this->entries) - $this->maxEntries, preserve_keys: true);
+        // Evict oldest entries one at a time until under cap.
+        while (count($this->entries) > $this->maxEntries) {
+            $oldestKey = null;
+            $oldestTime = PHP_INT_MAX;
+
+            foreach ($this->entries as $k => $e) {
+                if ($e['window_start'] < $oldestTime) {
+                    $oldestTime = $e['window_start'];
+                    $oldestKey = $k;
+                }
+            }
+
+            if ($oldestKey !== null) {
+                unset($this->entries[$oldestKey]);
+            }
+        }
     }
 
     private function evictExpired(): void

@@ -121,6 +121,22 @@ final class InMemoryRateLimitStoreTest extends TestCase
         $this->assertSame(1, $result->count);
     }
 
+    public function test_it_rejects_zero_max_entries(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('InMemoryRateLimitStore maxEntries must be at least 1.');
+
+        new InMemoryRateLimitStore(maxEntries: 0);
+    }
+
+    public function test_it_rejects_negative_max_entries(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('InMemoryRateLimitStore maxEntries must be at least 1.');
+
+        new InMemoryRateLimitStore(maxEntries: -5);
+    }
+
     public function test_it_evicts_entries_when_max_entries_exceeded(): void
     {
         $store = new InMemoryRateLimitStore(maxEntries: 3);

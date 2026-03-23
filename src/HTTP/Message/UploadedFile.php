@@ -7,7 +7,7 @@ namespace Dromos\Http\Message;
 use RuntimeException;
 use InvalidArgumentException;
 
-class UploadedFile implements UploadedFileInterface
+final class UploadedFile implements UploadedFileInterface
 {
     private StreamInterface $stream;
     private ?int $size;
@@ -51,11 +51,12 @@ class UploadedFile implements UploadedFileInterface
             throw new RuntimeException('File has already been moved.');
         }
 
-        if (empty($targetPath)) {
+        if ($targetPath === '') {
             throw new InvalidArgumentException('Target path must be a non-empty string.');
         }
 
         $this->fileMover->moveTo($this->getStream(), $targetPath);
+        $this->stream->detach();
         $this->moved = true;
     }
 

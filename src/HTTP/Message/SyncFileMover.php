@@ -10,9 +10,7 @@ final class SyncFileMover implements FileMoverInterface
 {
     public function moveTo(StreamInterface $stream, string $targetPath): void
     {
-        $stream->rewind();
-
-        $contents = $stream->getContents();
+        $contents = (string) $stream;
         $bytes = file_put_contents($targetPath, $contents);
 
         if ($bytes === false) {

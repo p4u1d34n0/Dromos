@@ -22,6 +22,9 @@ class Response
     public string $body = '';
     public bool $ended = false;
 
+    /** @var list<string> Chunks passed to write() */
+    public array $chunks = [];
+
     public function status(int $code): void
     {
         $this->statusCode = $code;
@@ -32,9 +35,15 @@ class Response
         $this->headers[] = [$name, $value, $ucWords];
     }
 
+    public function write(string $data): void
+    {
+        $this->chunks[] = $data;
+        $this->body .= $data;
+    }
+
     public function end(string $data = ''): void
     {
-        $this->body = $data;
+        $this->body .= $data;
         $this->ended = true;
     }
 }

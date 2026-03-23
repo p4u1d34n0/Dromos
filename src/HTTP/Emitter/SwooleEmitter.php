@@ -15,6 +15,8 @@ use OpenSwoole\HTTP\Response as SwooleResponse;
  */
 final class SwooleEmitter implements EmitterInterface
 {
+    private const int CHUNK_SIZE = 8192;
+
     public function __construct(private readonly SwooleResponse $swooleResponse) {}
 
     public function emit(ResponseInterface $response): void
@@ -27,7 +29,36 @@ final class SwooleEmitter implements EmitterInterface
             }
         }
 
-        $body = (string) $response->getBody();
-        $this->swooleResponse->end($body);
+        $this->emitBody($response);
+    }
+
+    /**
+     * Emit the response body using chunked output for large payloads
+     */
+    private function emitBody(ResponseInterface $response): void
+    {
+        $body = $response->getBody();
+
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
+
+        $size = $body->getSize();
+
+        if ($size === 0 || $size === null) {
+            $this->swooleResponse->end();
+            return;
+        }
+
+        if ($size <= self::CHUNK_SIZE) {
+            $this->swooleResponse->end((string) $body);
+            return;
+        }
+
+        while (!$body->eof()) {
+            $this->swooleResponse->write($body->read(self::CHUNK_SIZE));
+        }
+
+        $this->swooleResponse->end();
     }
 }

@@ -87,6 +87,25 @@ final class SwooleEmitterTest extends TestCase
         $this->assertTrue($swooleResponse->ended);
     }
 
+    #[Test]
+    public function test_it_streams_large_body_in_chunks(): void
+    {
+        $swooleResponse = new StubSwooleResponse();
+
+        // Create a body larger than the 8192-byte chunk threshold
+        $largeBody = str_repeat('A', 8192) . str_repeat('B', 4096);
+        $response = $this->createMockResponse(200, [], $largeBody);
+
+        $emitter = new SwooleEmitter($swooleResponse);
+        $emitter->emit($response);
+
+        $this->assertSame($largeBody, $swooleResponse->body);
+        $this->assertTrue($swooleResponse->ended);
+        $this->assertCount(2, $swooleResponse->chunks);
+        $this->assertSame(8192, strlen($swooleResponse->chunks[0]));
+        $this->assertSame(4096, strlen($swooleResponse->chunks[1]));
+    }
+
     private function createMockResponse(int $statusCode, array $headers, string $bodyContent): ResponseInterface
     {
         $body = new Stream();

@@ -19,7 +19,7 @@ final class SyncFileMoverTest extends TestCase
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir() . '/dromos_sync_mover_' . uniqid();
-        mkdir($this->tempDir, 0777, true);
+        mkdir($this->tempDir, 0700, true);
     }
 
     protected function tearDown(): void

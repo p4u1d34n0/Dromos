@@ -22,7 +22,7 @@ final class UploadedFileTest extends TestCase
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir() . '/dromos_test_' . uniqid();
-        mkdir($this->tempDir, 0777, true);
+        mkdir($this->tempDir, 0700, true);
     }
 
     protected function tearDown(): void
@@ -119,5 +119,19 @@ final class UploadedFileTest extends TestCase
         $this->expectExceptionMessage('Cannot retrieve stream after it has been moved.');
 
         $file->getStream();
+    }
+
+    #[Test]
+    public function test_it_throws_when_upload_error_is_not_ok(): void
+    {
+        $stream = new Stream();
+        $stream->write('data');
+
+        $file = new UploadedFile($stream, 4, UPLOAD_ERR_INI_SIZE);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cannot move uploaded file: upload error code 1.');
+
+        $file->moveTo($this->tempDir . '/should_not_exist.txt');
     }
 }

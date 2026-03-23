@@ -59,7 +59,7 @@ final class SyncFileMoverTest extends TestCase
         $mover = new SyncFileMover();
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unable to open target path:');
+        $this->expectExceptionMessage('Failed to write uploaded file to target location.');
 
         $mover->moveTo($stream, '/nonexistent/directory/file.txt');
     }

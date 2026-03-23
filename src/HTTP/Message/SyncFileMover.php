@@ -12,23 +12,11 @@ final class SyncFileMover implements FileMoverInterface
     {
         $stream->rewind();
 
-        set_error_handler(static fn (): bool => true);
-        try {
-            $dest = fopen($targetPath, 'wb');
-        } finally {
-            restore_error_handler();
-        }
+        $contents = $stream->getContents();
+        $bytes = file_put_contents($targetPath, $contents);
 
-        if ($dest === false) {
-            throw new RuntimeException("Unable to open target path: {$targetPath}");
-        }
-
-        try {
-            while (!$stream->eof()) {
-                fwrite($dest, $stream->read(8192));
-            }
-        } finally {
-            fclose($dest);
+        if ($bytes === false) {
+            throw new RuntimeException('Failed to write uploaded file to target location.');
         }
     }
 }

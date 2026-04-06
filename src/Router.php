@@ -6,8 +6,8 @@ use Dromos\Env\EnvLoader;
 
 use Closure;
 use Dromos\Middleware\RequestParameters;
-use Dromos\HTTP\Request;    // implements ServerRequestInterface
-use Dromos\HTTP\Response;   // implements ResponseInterface
+use Dromos\Http\Request;    // implements ServerRequestInterface
+use Dromos\Http\Response;   // implements ResponseInterface
 use Dromos\RouteGroup;
 use Dromos\RouteResource;
 use Dromos\RouterException;

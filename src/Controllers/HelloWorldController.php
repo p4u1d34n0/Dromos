@@ -3,8 +3,8 @@
 namespace Dromos\Controllers;
 
 use Dromos\Services\HelloWorldService;
-use Dromos\HTTP\Request;
-use Dromos\HTTP\Response;
+use Dromos\Http\Request;
+use Dromos\Http\Response;
 
 class HelloWorldController
 {

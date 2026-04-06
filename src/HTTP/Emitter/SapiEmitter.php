@@ -1,17 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dromos\Http\Emitter;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Emitter\EmitterInterface;
-
 
 /**
- * Standard HTTP Emitter for Dromos
- * 
- * Handles sending PSR-7 responses to the client with proper headers and body content
+ * SAPI HTTP Emitter for Dromos
+ *
+ * Sends PSR-7 responses using PHP's built-in SAPI functions (header(), echo).
+ * Suitable for traditional PHP-FPM / Apache mod_php environments.
  */
-class Emitter implements EmitterInterface
+final class SapiEmitter implements EmitterInterface
 {
     /**
      * Whether headers have already been sent

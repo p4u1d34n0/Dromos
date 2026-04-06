@@ -394,6 +394,8 @@ $dbHost = EnvLoader::get('DB_HOST', 'localhost');
 
 Loads `.env` files into `$_ENV` and `putenv()`. Skips comments (`#`) and malformed lines. Falsy values like `"0"` are correctly preserved.
 
+**Important:** `EnvLoader::load()` writes to `$_ENV` and `putenv()`, which are global, mutable state. In long-running processes (OpenSwoole, ReactPHP), call it **once at bootstrap** before `$server->start()`. Repeated calls are safely ignored — the loader uses a static guard to prevent re-invocation. If you need to reload in tests, call `EnvLoader::reset()` first.
+
 ---
 
 # Route Caching

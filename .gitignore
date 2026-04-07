@@ -1,4 +1,9 @@
 ./node_modules
 ./github
 ./vendor
+composer.lock
 .DS_Store
+.phpunit.cache
+# Swarm runtime
+.swarm/logs/
+.swarm/locks/

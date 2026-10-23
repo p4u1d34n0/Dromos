@@ -35,7 +35,7 @@ class Router implements RequestHandlerInterface
     /** @var array<int,array{method:string,path:string,handler:mixed}> */
     protected static array $routes = [];
 
-    /** @var array<int,array> */
+    /** @var array<int, array{0:string,1:string}> [controller class, missing method] */
     private static array $missingRoutes = [];
 
     /** @var MiddlewareInterface[] */
@@ -67,6 +67,9 @@ class Router implements RequestHandlerInterface
     /** @var array<string, array> Argument plans for controller methods, keyed by "Class::method" */
     private static array $methodPlans = [];
 
+    /** @var array<string, object> Controller instances keyed by lower-case class name */
+    private static array $controllers = [];
+
     public static function initialize(): void
     {
         $cacheFile = EnvLoader::get('ROUTER_CACHE_FILE');
@@ -87,6 +90,7 @@ class Router implements RequestHandlerInterface
         self::forgetMatchTable();
         self::$closurePlans = null;
         self::$methodPlans = [];
+        self::$controllers = [];
     }
 
     protected static function forgetMatchTable(): void
@@ -188,11 +192,15 @@ class Router implements RequestHandlerInterface
             return $target;
         }
         if (is_array($target) && count($target) === 2 && is_string($target[0])) {
-            $controller = new $target[0]();
-            if (!method_exists($controller, $target[1])) {
-                self::$missingRoutes[] = [$controller, $target[1]];
+            // Controllers are created on first use (see controller()), not at registration
+            [$class, $method] = $target;
+            if (!class_exists($class)) {
+                throw new \InvalidArgumentException("Route target class {$class} does not exist.");
             }
-            return [$controller, $target[1]];
+            if (!method_exists($class, $method)) {
+                self::$missingRoutes[] = [$class, $method];
+            }
+            return [$class, $method];
         }
         throw new \InvalidArgumentException("Invalid route target for URL.");
     }
@@ -491,6 +499,15 @@ class Router implements RequestHandlerInterface
     }
 
     /**
+     * The controller instance for a class, created the first time one of its
+     * routes is dispatched and reused after that (one per class per process).
+     */
+    private static function controller(string $class): object
+    {
+        return self::$controllers[strtolower(ltrim($class, '\\'))] ??= new $class();
+    }
+
+    /**
      * How to fill each of a handler's parameters, worked out by reflection the
      * first time the handler runs and reused after that.
      *
@@ -535,9 +552,8 @@ class Router implements RequestHandlerInterface
             $request = $request->withAttribute($key, $val);
         }
 
-        // Lazily instantiate controller if target is [className, method] strings
-        if (is_array($target) && is_string($target[0]) && class_exists($target[0])) {
-            $target = [new $target[0](), $target[1]];
+        if (is_array($target) && is_string($target[0])) {
+            $target = [self::controller($target[0]), $target[1]];
         }
 
         // Resolve each handler parameter using a plan worked out once per handler

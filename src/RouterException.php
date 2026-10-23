@@ -105,7 +105,7 @@ class RouterException extends \Exception
 
         if ($missing) {
             $missingRoutes = array_map(function ($route): array {
-                return [$route[0]::class => $route[1]];
+                return [(is_object($route[0]) ? $route[0]::class : $route[0]) => $route[1]];
             }, $missing);
 
             return new self('Missing Target Methods', 404, ['missing_routes' => $missingRoutes]);

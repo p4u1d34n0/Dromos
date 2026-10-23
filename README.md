@@ -100,6 +100,8 @@ Router::Patch("/users/{id}",[UserController::class, 'patch']);
 Router::Delete("/users/{id}",[UserController::class, 'destroy']);
 ```
 
+A controller is created the first time one of its routes is dispatched, then reused for every later request in the same process. There's one instance per class, shared by all of that class's routes. Under PHP-FPM that means at most one per request, and only for the controller that's actually used. Under OpenSwoole each worker keeps one instance per class, so don't keep per-request state in controller properties.
+
 ## Resource Routes
 
 Auto-register all HTTP methods for a controller:

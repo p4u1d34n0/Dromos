@@ -11,29 +11,13 @@ use Dromos\Http\Middleware\RequestHandlerInterface;
 use Dromos\Http\Request;
 use Dromos\Http\Response;
 use Dromos\Router;
+use Dromos\Tests\Support\RouterTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Router::class)]
-final class RouterMatchingTest extends TestCase
+final class RouterMatchingTest extends RouterTestCase
 {
-    private string $errorLog;
-
-    protected function setUp(): void
-    {
-        Router::reset();
-        // RouterExceptionHandler logs every 404 and 405
-        $this->errorLog = (string) ini_get('error_log');
-        ini_set('error_log', '/dev/null');
-    }
-
-    protected function tearDown(): void
-    {
-        Router::reset();
-        ini_set('error_log', $this->errorLog);
-    }
-
     #[Test]
     public function test_it_matches_static_routes(): void
     {
@@ -111,13 +95,13 @@ final class RouterMatchingTest extends TestCase
         Router::Put('/users/{id}', $this->label('update'));
         Router::Post('/users', $this->label('create'));
 
-        [$status, $body] = $this->dispatch('DELETE', '/users/1');
-        $this->assertSame(405, $status);
-        $this->assertSame(['GET', 'PUT'], $body['details']['available_methods']);
+        $response = $this->response('DELETE', '/users/1');
+        $this->assertSame(405, $response->getStatusCode());
+        $this->assertSame(['GET', 'PUT'], $this->decode($response)['details']['available_methods']);
 
-        [$status, $body] = $this->dispatch('GET', '/users');
-        $this->assertSame(405, $status);
-        $this->assertSame(['POST'], $body['details']['available_methods']);
+        $response = $this->response('GET', '/users');
+        $this->assertSame(405, $response->getStatusCode());
+        $this->assertSame(['POST'], $this->decode($response)['details']['available_methods']);
     }
 
     #[Test]
@@ -228,6 +212,24 @@ final class RouterMatchingTest extends TestCase
     }
 
     #[Test]
+    public function test_global_middleware_wraps_every_response_including_errors(): void
+    {
+        Router::Get('/items', $this->label('items'));
+        $router = new Router();
+        $router->addMiddleware(new class implements MiddlewareInterface {
+            public function handle(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+            {
+                return $handler->handle($request)->withHeader('X-Global', 'yes');
+            }
+        });
+
+        $this->assertSame('yes', $router->handle(Request::create('GET', '/items'))->getHeaderLine('X-Global'));
+        $notFound = $router->handle(Request::create('GET', '/nope'));
+        $this->assertSame(404, $notFound->getStatusCode());
+        $this->assertSame('yes', $notFound->getHeaderLine('X-Global'));
+    }
+
+    #[Test]
     public function test_it_matches_routes_loaded_from_the_route_cache(): void
     {
         $cacheFile = sys_get_temp_dir() . '/dromos_route_cache_' . uniqid() . '.json';
@@ -258,30 +260,6 @@ final class RouterMatchingTest extends TestCase
             $response->json(['route' => $route] + $request->getAttributes());
     }
 
-    private function response(string $method, string $uri): ResponseInterface
-    {
-        return (new Router())->handle(Request::create($method, $uri));
-    }
-
-    /** @return array{0:int,1:array<string,mixed>} */
-    private function dispatch(string $method, string $uri): array
-    {
-        $response = $this->response($method, $uri);
-        return [$response->getStatusCode(), json_decode((string) $response->getBody(), true)];
-    }
-
-    private function statusOf(string $method, string $uri): int
-    {
-        return $this->dispatch($method, $uri)[0];
-    }
-
-    /** @return array<string,mixed> */
-    private function body(string $method, string $uri): array
-    {
-        [$status, $body] = $this->dispatch($method, $uri);
-        $this->assertSame(200, $status, "$method $uri");
-        return $body;
-    }
 }
 
 final class RouterMatchingTestController

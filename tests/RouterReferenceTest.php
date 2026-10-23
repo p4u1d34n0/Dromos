@@ -7,36 +7,21 @@ namespace Dromos\Tests;
 use Dromos\Http\Request;
 use Dromos\Http\Response;
 use Dromos\Router;
+use Dromos\Tests\Support\RouterTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Checks the compiled matcher against a straightforward linear scan (the
  * matching algorithm Dromos used up to v1.1.0) over random route tables.
  */
 #[CoversClass(Router::class)]
-final class RouterReferenceTest extends TestCase
+final class RouterReferenceTest extends RouterTestCase
 {
     private const METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
     private const WORDS = ['users', 'me', 'posts', 'a', 'all', 'v1', 'x.json', 'new'];
     private const VALUES = ['7', 'me', 'all', 'x.json', 'new', 'zz'];
-
-    private string $errorLog;
-
-    protected function setUp(): void
-    {
-        Router::reset();
-        $this->errorLog = (string) ini_get('error_log');
-        ini_set('error_log', '/dev/null');
-    }
-
-    protected function tearDown(): void
-    {
-        Router::reset();
-        ini_set('error_log', $this->errorLog);
-    }
 
     /** @return array<string, array{int}> */
     public static function seeds(): array
@@ -74,7 +59,7 @@ final class RouterReferenceTest extends TestCase
                 $method = self::METHODS[mt_rand(0, 3)];
                 $path = $this->randomPath(false);
 
-                $response = (new Router())->handle(Request::create($method, $path));
+                $response = $this->response($method, $path);
                 $actual = [$response->getStatusCode(), json_decode((string) $response->getBody(), true)];
 
                 $this->assertSame($this->expected($routes, $method, $path), $this->normalise($actual), "$method $path (seed $seed, table $table)");

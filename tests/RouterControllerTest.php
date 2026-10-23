@@ -5,31 +5,21 @@ declare(strict_types=1);
 namespace Dromos\Tests;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Request;
 use Dromos\Http\Response;
 use Dromos\Router;
+use Dromos\Routing\ControllerResolverInterface;
+use Dromos\Tests\Support\RouterTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Router::class)]
-final class RouterControllerTest extends TestCase
+final class RouterControllerTest extends RouterTestCase
 {
-    private string $errorLog;
-
     protected function setUp(): void
     {
-        Router::reset();
+        parent::setUp();
         CountingController::$constructed = 0;
         OtherCountingController::$constructed = 0;
-        $this->errorLog = (string) ini_get('error_log');
-        ini_set('error_log', '/dev/null');
-    }
-
-    protected function tearDown(): void
-    {
-        Router::reset();
-        ini_set('error_log', $this->errorLog);
     }
 
     #[Test]
@@ -47,7 +37,7 @@ final class RouterControllerTest extends TestCase
         Router::Get('/a', [CountingController::class, 'show']);
         Router::Get('/b', [OtherCountingController::class, 'show']);
 
-        $this->assertSame(200, $this->dispatch('GET', '/b')->getStatusCode());
+        $this->assertSame(200, $this->response('GET', '/b')->getStatusCode());
 
         $this->assertSame(0, CountingController::$constructed);
         $this->assertSame(1, OtherCountingController::$constructed);
@@ -88,24 +78,37 @@ final class RouterControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_a_custom_controller_resolver_supplies_controllers(): void
+    {
+        $resolver = new class implements ControllerResolverInterface {
+            /** @var string[] */
+            public array $resolved = [];
+
+            public function resolve(string $class): object
+            {
+                $this->resolved[] = $class;
+                return new $class();
+            }
+        };
+        Router::setControllerResolver($resolver);
+        Router::Get('/a', [CountingController::class, 'show']);
+
+        $this->assertSame(['instance' => 1, 'calls' => 1], $this->body('GET', '/a'));
+        $this->assertSame(['instance' => 2, 'calls' => 1], $this->body('GET', '/a'));
+        $this->assertSame([CountingController::class, CountingController::class], $resolver->resolved);
+
+        Router::reset();
+        Router::Get('/a', [CountingController::class, 'show']);
+        $this->body('GET', '/a');
+        $this->assertCount(2, $resolver->resolved, 'reset() restores the default resolver');
+    }
+
+    #[Test]
     public function test_a_missing_controller_method_returns_500_when_dispatched(): void
     {
         Router::Get('/a', [CountingController::class, 'nope']);
 
-        $this->assertSame(500, $this->dispatch('GET', '/a')->getStatusCode());
-    }
-
-    private function dispatch(string $method, string $uri): ResponseInterface
-    {
-        return (new Router())->handle(Request::create($method, $uri));
-    }
-
-    /** @return array<mixed> */
-    private function body(string $method, string $uri): array
-    {
-        $response = $this->dispatch($method, $uri);
-        $this->assertSame(200, $response->getStatusCode(), "$method $uri: " . $response->getBody());
-        return json_decode((string) $response->getBody(), true);
+        $this->assertSame(500, $this->response('GET', '/a')->getStatusCode());
     }
 }
 

@@ -12,19 +12,7 @@
 
 $kind = $argv[1] ?? 'empty';
 $src = rtrim($argv[2] ?? __DIR__ . '/../src', '/');
-spl_autoload_register(function (string $class) use ($src) {
-    if (!str_starts_with($class, 'Dromos\\')) {
-        return;
-    }
-    $rel = str_replace('\\', '/', substr($class, 7));
-    foreach ([$rel, preg_replace('#^Http/#', 'HTTP/', $rel)] as $candidate) {
-        if (is_file("$src/$candidate.php")) {
-            require "$src/$candidate.php";
-            return;
-        }
-    }
-});
-ini_set('error_log', '/dev/null');
+(require __DIR__ . '/autoload.php')($src);
 
 use Dromos\Router;
 use Dromos\Http\Request;

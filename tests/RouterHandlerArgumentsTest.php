@@ -9,28 +9,13 @@ use Dromos\Http\Message\ServerRequestInterface;
 use Dromos\Http\Request;
 use Dromos\Http\Response;
 use Dromos\Router;
+use Dromos\Tests\Support\RouterTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Router::class)]
-final class RouterHandlerArgumentsTest extends TestCase
+final class RouterHandlerArgumentsTest extends RouterTestCase
 {
-    private string $errorLog;
-
-    protected function setUp(): void
-    {
-        Router::reset();
-        $this->errorLog = (string) ini_get('error_log');
-        ini_set('error_log', '/dev/null');
-    }
-
-    protected function tearDown(): void
-    {
-        Router::reset();
-        ini_set('error_log', $this->errorLog);
-    }
-
     #[Test]
     public function test_it_injects_request_and_response_by_type_in_any_order(): void
     {
@@ -48,6 +33,31 @@ final class RouterHandlerArgumentsTest extends TestCase
 
         $this->assertSame(['1', '2'], $this->body('GET', '/posts/1/comments/2'));
         $this->assertSame(['3', '4'], $this->body('GET', '/posts/3/comments/4'));
+    }
+
+    #[Test]
+    public function test_route_parameters_coerce_to_scalar_parameter_types(): void
+    {
+        Router::Get('/n/{id}', fn(Response $res, int $id) => $res->json(['id' => $id, 'type' => get_debug_type($id)]));
+
+        $this->assertSame(['id' => 5, 'type' => 'int'], $this->body('GET', '/n/5'));
+    }
+
+    #[Test]
+    public function test_union_typed_parameters_are_filled_from_route_parameters(): void
+    {
+        Router::Get('/u/{id}', fn(Response $res, int|string $id) => $res->json(['id' => $id]));
+
+        $this->assertSame(['id' => '5'], $this->body('GET', '/u/5'));
+        $this->assertSame(['id' => 'abc'], $this->body('GET', '/u/abc'));
+    }
+
+    #[Test]
+    public function test_a_handler_that_does_not_return_a_response_returns_500(): void
+    {
+        Router::Get('/bad', fn() => 'not a response');
+
+        $this->assertSame(500, $this->statusOf('GET', '/bad'));
     }
 
     #[Test]
@@ -79,8 +89,8 @@ final class RouterHandlerArgumentsTest extends TestCase
     {
         Router::Get('/broken', fn(Response $res, string $missing) => $res->json([]));
 
-        $this->assertSame(500, $this->dispatch('GET', '/broken')->getStatusCode());
-        $this->assertSame(500, $this->dispatch('GET', '/broken')->getStatusCode());
+        $this->assertSame(500, $this->response('GET', '/broken')->getStatusCode());
+        $this->assertSame(500, $this->response('GET', '/broken')->getStatusCode());
     }
 
     #[Test]
@@ -104,23 +114,6 @@ final class RouterHandlerArgumentsTest extends TestCase
         $this->assertSame(['id' => '7', 'path' => '/users/7'], $this->body('GET', '/users/7'));
         $this->assertSame(['page' => 1], $this->body('GET', '/users'));
         $this->assertSame(['id' => '8', 'path' => '/users/8'], $this->body('GET', '/users/8'));
-    }
-
-    // ────────────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ────────────────────────────────────────────────────────────────────────────────
-
-    private function dispatch(string $method, string $uri): ResponseInterface
-    {
-        return (new Router())->handle(Request::create($method, $uri));
-    }
-
-    /** @return array<mixed> */
-    private function body(string $method, string $uri): array
-    {
-        $response = $this->dispatch($method, $uri);
-        $this->assertSame(200, $response->getStatusCode(), "$method $uri: " . $response->getBody());
-        return json_decode((string) $response->getBody(), true);
     }
 }
 

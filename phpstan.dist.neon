@@ -1,0 +1,6 @@
+parameters:
+    level: max
+    paths:
+        - src/Routing
+    bootstrapFiles:
+        - tests/bootstrap.php

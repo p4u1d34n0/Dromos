@@ -33,7 +33,7 @@ class RouterException extends \Exception
         string $message = "",
         int $statusCode = 500,
         array $args = [],
-        \Throwable $previous = null
+        ?\Throwable $previous = null
     ) {
         parent::__construct($message, $statusCode, $previous);
         $this->statusCode = $statusCode;

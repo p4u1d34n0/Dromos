@@ -52,6 +52,21 @@ class Router implements RequestHandlerInterface
      */
     private static ?array $matchTable = null;
 
+    /** Where a handler parameter's value comes from. */
+    private const ARG_REQUEST = 0;
+    private const ARG_RESPONSE = 1;
+    private const ARG_NAMED = 2;
+
+    /**
+     * Argument plans for closure handlers. Entries go when their closure is freed.
+     *
+     * @var \WeakMap<Closure, array>|null
+     */
+    private static ?\WeakMap $closurePlans = null;
+
+    /** @var array<string, array> Argument plans for controller methods, keyed by "Class::method" */
+    private static array $methodPlans = [];
+
     public static function initialize(): void
     {
         $cacheFile = EnvLoader::get('ROUTER_CACHE_FILE');
@@ -70,6 +85,8 @@ class Router implements RequestHandlerInterface
         self::$routeMiddleware = [];
         self::disableCache();
         self::forgetMatchTable();
+        self::$closurePlans = null;
+        self::$methodPlans = [];
     }
 
     protected static function forgetMatchTable(): void
@@ -473,6 +490,40 @@ class Router implements RequestHandlerInterface
         return $handler->handle($request);
     }
 
+    /**
+     * How to fill each of a handler's parameters, worked out by reflection the
+     * first time the handler runs and reused after that.
+     *
+     * @param Closure|array{0:object,1:string} $target
+     * @return array<int, array{0:int,1:string,2:\ReflectionParameter}> [source, name, parameter]
+     */
+    private static function argumentPlan($target): array
+    {
+        if ($target instanceof Closure) {
+            self::$closurePlans ??= new \WeakMap();
+            return self::$closurePlans[$target] ??= self::buildArgumentPlan(new \ReflectionFunction($target));
+        }
+
+        $key = get_class($target[0]) . '::' . $target[1];
+        return self::$methodPlans[$key] ??= self::buildArgumentPlan(new \ReflectionMethod($target[0], $target[1]));
+    }
+
+    /** @return array<int, array{0:int,1:string,2:\ReflectionParameter}> */
+    private static function buildArgumentPlan(\ReflectionFunctionAbstract $ref): array
+    {
+        $plan = [];
+        foreach ($ref->getParameters() as $p) {
+            $type = $p->getType()?->getName();
+            $source = match (true) {
+                $type !== null && is_a($type, ServerRequestInterface::class, true) => self::ARG_REQUEST,
+                $type !== null && is_a($type, ResponseInterface::class, true) => self::ARG_RESPONSE,
+                default => self::ARG_NAMED,
+            };
+            $plan[] = [$source, $p->getName(), $p];
+        }
+        return $plan;
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────
     // Invoke route target (Closure or [Controller,method])
     // ────────────────────────────────────────────────────────────────────────────────
@@ -489,27 +540,18 @@ class Router implements RequestHandlerInterface
             $target = [new $target[0](), $target[1]];
         }
 
-        // Build argument list via reflection
+        // Resolve each handler parameter using a plan worked out once per handler
         $args = [];
-        if ($target instanceof Closure) {
-            $ref = new \ReflectionFunction($target);
-        } else {
-            $ref = new \ReflectionMethod($target[0], $target[1]);
-        }
-
-        foreach ($ref->getParameters() as $p) {
-            $type = $p->getType()?->getName();
-            if ($type !== null && is_a($type, ServerRequestInterface::class, true)) {
-                $args[] = $request;
-            } elseif ($type !== null && is_a($type, ResponseInterface::class, true)) {
-                $args[] = new Response();
-            } elseif (array_key_exists($p->getName(), $params)) {
-                $args[] = $params[$p->getName()];
-            } elseif ($p->isOptional()) {
-                $args[] = $p->getDefaultValue();
-            } else {
-                throw new \InvalidArgumentException("Cannot resolve parameter {$p->getName()}");
-            }
+        foreach (self::argumentPlan($target) as [$source, $name, $parameter]) {
+            $args[] = match ($source) {
+                self::ARG_REQUEST  => $request,
+                self::ARG_RESPONSE => new Response(),
+                default => array_key_exists($name, $params)
+                    ? $params[$name]
+                    : ($parameter->isOptional()
+                        ? $parameter->getDefaultValue()
+                        : throw new \InvalidArgumentException("Cannot resolve parameter {$name}")),
+            };
         }
 
         // Call and return the result

@@ -29,6 +29,9 @@ class Router implements RequestHandlerInterface
 
     use RouteCacheTrait;
 
+    /** Parameterised routes per combined regex, keeping each pattern well inside PCRE's size limit. */
+    private const ROUTES_PER_REGEX = 50;
+
     /** @var array<int,array{method:string,path:string,handler:mixed}> */
     protected static array $routes = [];
 
@@ -40,6 +43,14 @@ class Router implements RequestHandlerInterface
 
     /** @var array<string, MiddlewareInterface[]> Per-route middleware keyed by "METHOD:/path" */
     protected static array $routeMiddleware = [];
+
+    /**
+     * Route table compiled for matching. Built on first dispatch and dropped
+     * whenever the routes change. See compileRoutes().
+     *
+     * @var array<string, array{exact: array<string, array{0:mixed,1:int}>, regexes: string[], parameterised: array<int, array{0:string,1:mixed,2:string[],3:int}>, shadowedBy: array<string, array|false>}>|null
+     */
+    private static ?array $matchTable = null;
 
     public static function initialize(): void
     {
@@ -58,6 +69,12 @@ class Router implements RequestHandlerInterface
         self::$missingRoutes = [];
         self::$routeMiddleware = [];
         self::disableCache();
+        self::forgetMatchTable();
+    }
+
+    protected static function forgetMatchTable(): void
+    {
+        self::$matchTable = null;
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -138,6 +155,7 @@ class Router implements RequestHandlerInterface
         ];
 
         self::$routes[$method][$url] = $route['handler'];
+        self::forgetMatchTable();
 
         // Track the route for caching
         self::trackRouteForCache($route);
@@ -234,59 +252,26 @@ class Router implements RequestHandlerInterface
             $method = $request->getMethod();
             $path = $request->getUri()->getPath();
 
-            // Determine the routes to use (cached or standard)
-            $routes = self::$useCache ? self::$compiledRoutes : self::$routes;
-
-            // Try to match the path under the requested method
-            if (isset($routes[$method])) {
-                foreach ($routes[$method] as $routeUrl => $target) {
-                    // Exact match
-                    if ($routeUrl === $path) {
-                        $routeKey = $method . ':' . $routeUrl;
-                        if (isset(self::$routeMiddleware[$routeKey])) {
-                            return $this->runRouteMiddleware(
-                                self::$routeMiddleware[$routeKey],
-                                $request,
-                                $target,
-                                []
-                            );
-                        }
-                        return $this->invokeTarget($target, [], $request);
-                    }
-
-                    // Parameterized match
-                    $params = $this->extractParams($routeUrl, $path);
-                    if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
-                        $routeKey = $method . ':' . $routeUrl;
-                        if (isset(self::$routeMiddleware[$routeKey])) {
-                            return $this->runRouteMiddleware(
-                                self::$routeMiddleware[$routeKey],
-                                $request,
-                                $target,
-                                $params
-                            );
-                        }
-                        return $this->invokeTarget($target, $params, $request);
-                    }
+            $match = self::matchRoute($method, $path);
+            if ($match !== null) {
+                [$routeUrl, $target, $params] = $match;
+                $routeKey = $method . ':' . $routeUrl;
+                if (isset(self::$routeMiddleware[$routeKey])) {
+                    return $this->runRouteMiddleware(
+                        self::$routeMiddleware[$routeKey],
+                        $request,
+                        $target,
+                        $params
+                    );
                 }
+                return $this->invokeTarget($target, $params, $request);
             }
 
             // No match found — check if path exists under other methods (405 vs 404)
             $allowedMethods = [];
-            foreach ($routes as $otherMethod => $otherRoutes) {
-                if ($otherMethod === $method) {
-                    continue;
-                }
-                foreach ($otherRoutes as $routeUrl => $target) {
-                    if ($routeUrl === $path) {
-                        $allowedMethods[] = $otherMethod;
-                        break;
-                    }
-                    $params = $this->extractParams($routeUrl, $path);
-                    if (!empty($params) && self::reconstructUrl($routeUrl, $params) === $path) {
-                        $allowedMethods[] = $otherMethod;
-                        break;
-                    }
+            foreach (array_keys(self::$matchTable) as $otherMethod) {
+                if ($otherMethod !== $method && self::matchRoute($otherMethod, $path) !== null) {
+                    $allowedMethods[] = $otherMethod;
                 }
             }
 
@@ -304,32 +289,125 @@ class Router implements RequestHandlerInterface
 
 
     // ────────────────────────────────────────────────────────────────────────────────
-    // Extract route parameters based on placeholders
+    // Route matching against the compiled table
     // ────────────────────────────────────────────────────────────────────────────────
 
-    private function extractParams(string $route, string $path): array
+    /**
+     * Find the route for a method and path.
+     *
+     * Routes are tried in registration order and the first match wins, exactly
+     * as a linear scan would: a route matches when its URL equals the path, or
+     * when its {placeholders} match the path's segments.
+     *
+     * @return array{0:string,1:mixed,2:array<string,string>}|null [route URL, target, params]
+     */
+    private static function matchRoute(string $method, string $path): ?array
     {
-        // Extract parameter names
-        preg_match_all('/\{([^}]+)\}/', $route, $matches);
-        $names = $matches[1] ?? [];
+        self::$matchTable ??= self::compileRoutes();
+        $table = self::$matchTable[$method] ?? null;
+        if ($table === null) {
+            return null;
+        }
 
-        // Split route into static segments and placeholders, escape static parts
-        $parts = preg_split('/(\{[^}]+\})/', $route, -1, PREG_SPLIT_DELIM_CAPTURE);
-        $pattern = '';
-        foreach ($parts as $part) {
-            if (preg_match('/^\{[^}]+\}$/', $part)) {
-                $pattern .= '([^/]+)';
-            } else {
-                $pattern .= preg_quote($part, '#');
+        if (isset($table['exact'][$path])) {
+            [$target, $position] = $table['exact'][$path];
+            // A parameterised route registered earlier that also matches this path wins.
+            // Looked up on first hit and remembered, so building the table stays cheap.
+            $earlier = self::$matchTable[$method]['shadowedBy'][$path] ??= self::matchParameterised($table, $path) ?? false;
+            if ($earlier === false || $earlier[3] >= $position) {
+                return [$path, $target, []];
+            }
+            return [$earlier[0], $earlier[1], $earlier[2]];
+        }
+
+        $match = self::matchParameterised($table, $path);
+        return $match === null ? null : [$match[0], $match[1], $match[2]];
+    }
+
+    /**
+     * Match the path against the method's parameterised routes.
+     *
+     * @return array{0:string,1:mixed,2:array<string,string>,3:int}|null [route URL, target, params, position]
+     */
+    private static function matchParameterised(array $table, string $path): ?array
+    {
+        foreach ($table['regexes'] as $regex) {
+            if (preg_match($regex, $path, $m)) {
+                [$routeUrl, $target, $names, $position] = $table['parameterised'][(int) $m['MARK']];
+                return [$routeUrl, $target, array_combine($names, array_slice($m, 1, count($names))), $position];
             }
         }
+        return null;
+    }
 
-        if (! preg_match("#^{$pattern}$#", $path, $values)) {
-            return [];
+    /**
+     * Build the per-method match table from the registered (or cached) routes.
+     *
+     * Every route URL goes in a hash map for exact matches. Routes with
+     * {placeholders} are also compiled into combined regexes, in registration
+     * order, where (*MARK) identifies the route that matched.
+     */
+    private static function compileRoutes(): array
+    {
+        $routes = self::$useCache ? self::$compiledRoutes : self::$routes;
+        $table = [];
+
+        foreach ($routes as $method => $list) {
+            $exact = [];
+            $parameterised = [];
+            $patterns = [];
+            $position = 0;
+
+            foreach ($list as $routeUrl => $target) {
+                $routeUrl = (string) $routeUrl;
+                $exact[$routeUrl] = [$target, ++$position];
+                if (!str_contains($routeUrl, '{')) {
+                    continue;
+                }
+
+                // Odd entries are the {placeholders}, even entries the literal text between them
+                $parts = preg_split('/(\{[^}]+\})/', $routeUrl, -1, PREG_SPLIT_DELIM_CAPTURE);
+                if (count($parts) === 1) {
+                    continue;
+                }
+
+                $pattern = '';
+                $groups = [];
+                foreach ($parts as $i => $part) {
+                    if ($i % 2 === 0) {
+                        $pattern .= preg_quote($part, '~');
+                        continue;
+                    }
+                    $name = substr($part, 1, -1);
+                    if (isset($groups[$name])) {
+                        // A repeated placeholder must capture the same value each time
+                        $pattern .= '\\g{' . $groups[$name] . '}';
+                        continue;
+                    }
+                    $groups[$name] = count($groups) + 1;
+                    $pattern .= '([^/]+)';
+                }
+
+                $index = count($parameterised);
+                $parameterised[$index] = [$routeUrl, $target, array_keys($groups), $position];
+                $patterns[] = $pattern . '(*MARK:' . $index . ')';
+            }
+
+            // (?| ... ) restarts group numbering in each branch, so params are always $m[1..n]
+            $regexes = [];
+            foreach (array_chunk($patterns, self::ROUTES_PER_REGEX) as $chunk) {
+                $regexes[] = '~^(?|' . implode('|', $chunk) . ')$~';
+            }
+
+            $table[$method] = [
+                'exact'         => $exact,
+                'regexes'       => $regexes,
+                'parameterised' => $parameterised,
+                'shadowedBy'    => [],
+            ];
         }
 
-        array_shift($values); // drop full match
-        return array_combine($names, $values);
+        return $table;
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -438,17 +516,5 @@ class Router implements RequestHandlerInterface
         return $target instanceof Closure
             ? $target(...$args)
             : $target[0]->{$target[1]}(...$args);
-    }
-
-    // ────────────────────────────────────────────────────────────────────────────────
-    // Utility: replace {key} in URL template
-    // ────────────────────────────────────────────────────────────────────────────────
-
-    private static function reconstructUrl(string $routeUrl, array $params): string
-    {
-        foreach ($params as $k => $v) {
-            $routeUrl = str_replace("{{$k}}", $v, $routeUrl);
-        }
-        return $routeUrl;
     }
 }

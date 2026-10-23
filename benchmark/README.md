@@ -186,3 +186,40 @@ Dromos uses `src/HTTP/` (uppercase) on disk but the PHP namespace is
 mismatch by falling back to an uppercase `HTTP/` directory lookup when the
 initial case-sensitive path is not found. This ensures the benchmark runs
 correctly on Linux's case-sensitive filesystem inside Docker.
+
+## Router Dispatch Micro-benchmark
+
+`dispatch.php` measures the router on its own, in-process, with no HTTP server:
+
+```bash
+php -d opcache.enable_cli=1 benchmark/dispatch.php            # this checkout
+php -d opcache.enable_cli=1 benchmark/dispatch.php ../other/src  # another copy, to compare
+```
+
+- **worker** registers routes once, then dispatches repeatedly, as OpenSwoole and RoadRunner do.
+- **fpm** registers every route and dispatches one request each time, as PHP-FPM does.
+
+Each row creates a `Request`, dispatches it, and builds a JSON `Response`. Results are in µs per request (lower is better). These are the best of 3 runs on Apple Silicon with PHP 8.4 and opcache, comparing v1.1.0 against the compiled matcher:
+
+| Routes | Mode | Request | v1.1.0 | Compiled | Speed-up |
+|---|---|---|---:|---:|---:|
+| 20 | worker | exact path, registered first | 2.6 | 2.8 | 0.9× |
+| 20 | worker | exact path, registered last | 9.9 | 2.9 | 3.4× |
+| 20 | worker | 1 parameter, registered last | 11.4 | 3.4 | 3.4× |
+| 20 | worker | 2 parameters, registered last | 12.4 | 3.8 | 3.3× |
+| 20 | worker | no match (404) | 24.0 | 12.8 | 1.9× |
+| 20 | fpm | register all + 1 parameter, last | 17.4 | 17.9 | 1.0× |
+| 200 | worker | exact path, registered first | 2.8 | 2.8 | 1.0× |
+| 200 | worker | exact path, registered last | 97.5 | 2.8 | 34.6× |
+| 200 | worker | 1 parameter, registered last | 95.8 | 3.6 | 26.2× |
+| 200 | worker | 2 parameters, registered last | 97.5 | 4.3 | 22.6× |
+| 200 | worker | no match (404) | 126.8 | 13.3 | 9.6× |
+| 200 | fpm | register all + 1 parameter, last | 151.7 | 148.4 | 1.0× |
+| 2,000 | worker | exact path, registered first | 2.7 | 2.8 | 1.0× |
+| 2,000 | worker | exact path, registered last | 953.5 | 2.9 | 332.2× |
+| 2,000 | worker | 1 parameter, registered last | 953.0 | 9.7 | 98.3× |
+| 2,000 | worker | 2 parameters, registered last | 975.9 | 10.4 | 93.7× |
+| 2,000 | worker | no match (404) | 1212.8 | 20.8 | 58.2× |
+| 2,000 | fpm | register all + 1 parameter, last | 1576.7 | 1450.3 | 1.1× |
+
+v1.1.0 tested each route in turn, building that route's regex as it went, so the cost grew with the size of the route table. The compiled matcher's cost stays nearly flat. PHP-FPM runs barely change, because registering the routes on every request dominates there.

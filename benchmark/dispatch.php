@@ -4,7 +4,8 @@
  * Router dispatch micro-benchmark (in-process, no HTTP).
  *
  * worker: routes registered once, then many requests (OpenSwoole / RoadRunner).
- * fpm:    routes registered and one request dispatched each time (PHP-FPM).
+ * fpm:    routes registered and one request dispatched each time (PHP-FPM),
+ *         without and (where supported) with the route cache.
  *
  * Usage: php -d opcache.enable_cli=1 benchmark/dispatch.php [path/to/src]
  */
@@ -46,6 +47,11 @@ function time_us(callable $fn, float $budget = 0.4): float
     return (hrtime(true) - $start) / $n / 1000;
 }
 
+// The PHP route cache arrived in 1.2; older versions skip the cached rows
+$cacheFile = class_exists(\Dromos\Routing\RouteCacheFile::class)
+    ? sys_get_temp_dir() . '/dromos_bench_routes_' . getmypid() . '.php'
+    : null;
+
 $label = basename(dirname($src)) . '/' . basename($src);
 printf("%-22s %-8s %-30s %10s\n", $label, 'mode', 'request', 'µs/req');
 foreach ([5, 50, 500] as $resources) {
@@ -68,4 +74,14 @@ foreach ([5, 50, 500] as $resources) {
         register($resources);
         dispatch($method, $path);
     }));
+    if ($cacheFile !== null) {
+        printf("%-22s %-8s %-30s %10.2f\n", "$routes routes", 'fpm', 'cached: register + param, last', time_us(function () use ($resources, $method, $path, $cacheFile) {
+            register($resources);
+            Router::enableCache($cacheFile);
+            dispatch($method, $path);
+        }));
+    }
+}
+if ($cacheFile !== null) {
+    @unlink($cacheFile);
 }

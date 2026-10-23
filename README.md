@@ -9,7 +9,7 @@
 * **PSR-7 / PSR-15 Inspired** — Native HTTP message and middleware implementations with PSR-compatible APIs. No external libraries required.
 * **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus combined regexes, so lookups stay fast as the route table grows.
 * **Route Groups** — Group routes under a shared prefix with per-group middleware.
-* **Route Caching** — Serialize and load route trees to eliminate route parsing overhead in production.
+* **Route Caching** — Store the compiled route table in an opcache-friendly PHP file that refreshes itself when routes change.
 * **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
 * **Input Validation** — Built-in validator with pipe-delimited rules for API input.
 * **JSON-First API Design** — JSON request body parsing, JSON error responses, and response helpers.
@@ -435,25 +435,37 @@ Loads `.env` files into `$_ENV` and `putenv()`. Skips comments (`#`) and malform
 
 # Route Caching
 
-For production, cache compiled routes to skip parsing:
+In production, cache the compiled route table so it isn't rebuilt on every request. Under PHP-FPM this makes routing about 2.5 times faster with a few hundred routes or more.
 
 ```env
-ROUTER_CACHE_FILE=/tmp/dromos_routes.cache
+ROUTER_CACHE_FILE=/var/www/app/storage/cache/routes.php
 ```
 
 ```php
-Router::initialize(); // Loads cache if ROUTER_CACHE_FILE is set
+Router::initialize(); // Enables the cache if ROUTER_CACHE_FILE is set
+
+// Register your routes as normal, on every request
+Router::Get("/users/{id}", [UserController::class, 'show']);
 ```
 
-Or manage manually:
+Or manage it manually:
 
 ```php
-Router::enableCache('/tmp/routes.cache');
-Router::clearCache();
+Router::enableCache('/var/www/app/storage/cache/routes.php');
+Router::clearCache();   // delete the file; it's rebuilt on the next request
 Router::disableCache();
 ```
 
-**Note:** Route caching uses `json_encode()`. Routes using Closure handlers cannot be cached — use controller targets for cacheable routes.
+How it works:
+
+- **The cache file is PHP.** Opcache keeps it in shared memory, so loading it costs almost nothing.
+- **It stays current on its own.** A signature of the registered routes is stored with the table. If a route is added, removed or changed, the file is rebuilt on the next request, so you don't need to clear it on deploy.
+- **Every route type works.** Closures, controllers, groups and middleware all behave exactly as they do without the cache.
+- **A broken cache never fails a request.** If the file can't be written, the error is logged and the routes are compiled as normal. A corrupt or outdated file is rebuilt.
+
+**Security:** the cache file is run with `require`. Keep it in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
+
+**Upgrading from 1.1:** the old JSON cache file is replaced automatically. In 1.1, routes in the cache file could be dispatched without being registered. That skipped their middleware and kept deleted routes alive. This still works in 1.2 but triggers an `E_USER_DEPRECATED` notice, and it stops working in 2.0. Register your routes on every request.
 
 ---
 

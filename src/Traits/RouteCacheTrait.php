@@ -2,16 +2,21 @@
 
 namespace Dromos\Traits;
 
+use Dromos\Routing\RouteCacheFile;
+
+/**
+ * Route cache controls for Router.
+ *
+ * With the cache enabled, the compiled route table is stored in a PHP file
+ * (see RouteCacheFile) and reused while the registered routes stay the same,
+ * so compiling is skipped. Routes must still be registered on every request.
+ */
 trait RouteCacheTrait
 {
-    /** @var bool */
+    /** @var bool Whether the route cache is enabled */
     protected static bool $useCache = false;
 
-    /** @var string|null */
-    protected static ?string $cacheFile = null;
-
-    /** @var array<string, array<string, mixed>> Cached routes keyed by [method][path] => handler */
-    protected static array $compiledRoutes = [];
+    protected static ?RouteCacheFile $routeCache = null;
 
     /**
      * Drop any match table built from the previous route set.
@@ -19,92 +24,43 @@ trait RouteCacheTrait
     abstract protected static function forgetMatchTable(): void;
 
     /**
-     * Turn on route caching to the given file.
+     * Turn on route caching to the given file. The file is PHP and is run
+     * with `require`, so keep it in a directory only the application can write.
      */
     public static function enableCache(string $path): void
     {
-        static::$useCache  = true;
-        static::$cacheFile = $path;
-
-        if (file_exists($path)) {
-            $data   = @file_get_contents($path);
-            $parsed = $data !== false ? json_decode($data, true) : [];
-            static::$compiledRoutes = is_array($parsed) ? $parsed : [];
-        }
+        static::$useCache = true;
+        static::$routeCache = new RouteCacheFile($path);
         static::forgetMatchTable();
     }
 
     /**
-     * Turn off route caching.
+     * Turn off route caching. The cache file is left in place.
      */
     public static function disableCache(): void
     {
-        static::$useCache        = false;
-        static::$cacheFile       = null;
-        static::$compiledRoutes  = [];
+        static::$useCache = false;
+        static::$routeCache = null;
         static::forgetMatchTable();
     }
 
     /**
-     * Delete the cache file and reset in-memory cache.
+     * Delete the cache file. It is rebuilt on the next dispatch while caching is enabled.
      */
     public static function clearCache(): void
     {
-        if (static::$cacheFile && file_exists(static::$cacheFile)) {
-            @unlink(static::$cacheFile);
-        }
-        static::$compiledRoutes = [];
+        static::$routeCache?->clear();
         static::forgetMatchTable();
     }
 
     /**
-     * Return the currently cached route definitions.
+     * The controller routes stored in the cache file, keyed by method then
+     * route URL. Closure routes are never stored.
      *
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array<string, array{0:class-string,1:string}>>
      */
     public static function cachedRoutes(): array
     {
-        return static::$compiledRoutes;
-    }
-
-    /**
-     * If caching is enabled, immediately write updated routes back to disk.
-     */
-    protected static function writeCacheFile(): void
-    {
-        if (! static::$useCache || ! static::$cacheFile) {
-            return;
-        }
-
-        $json = json_encode(static::$compiledRoutes);
-        file_put_contents(static::$cacheFile, $json, LOCK_EX);
-        chmod(static::$cacheFile, 0644);
-    }
-
-    /**
-     * Hook this after you add new routes to keep cache in sync.
-     *
-     * @param array{method:string,path:string,handler:mixed} $route
-     */
-    protected static function trackRouteForCache(array $route): void
-    {
-        if (!static::$useCache) {
-            return;
-        }
-
-        $handler = $route['handler'];
-
-        // Closures cannot be cached — skip silently
-        if ($handler instanceof \Closure) {
-            return;
-        }
-
-        // Convert [instance, method] to [className, method] for JSON serialization
-        if (is_array($handler) && is_object($handler[0])) {
-            $handler = [get_class($handler[0]), $handler[1]];
-        }
-
-        static::$compiledRoutes[$route['method']][$route['path']] = $handler;
-        static::writeCacheFile();
+        return static::$routeCache?->load()?->handlers ?? [];
     }
 }

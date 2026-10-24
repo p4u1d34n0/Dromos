@@ -235,13 +235,13 @@ class Router implements RequestHandlerInterface
                 )->handle($request);
             }
 
-            // No match: 405 if the path exists under other methods, else 404
+            // No match: 405 if the path exists under other methods, else 404. These
+            // are the client's errors, so they're answered without being logged
             $allowedMethods = self::matchTable()->allowedMethods($path, $method);
-            if ($allowedMethods !== []) {
-                throw RouterException::methodNotAllowed($allowedMethods);
-            }
-
-            throw RouterException::routeNotFound($path);
+            $error = $allowedMethods !== []
+                ? RouterException::methodNotAllowed($allowedMethods)
+                : RouterException::routeNotFound($path);
+            return RouterExceptionHandler::render($error, $error->getStatusCode(), $error->getArgs());
         } catch (RouterException $e) {
             return RouterExceptionHandler::handle($e, $e->getStatusCode(), $e->getArgs());
         } catch (\Throwable $e) {

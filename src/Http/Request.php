@@ -3,8 +3,9 @@
 namespace Dromos\Http;
 
 use Dromos\Http\Message\ServerRequestInterface;
-use Dromos\Http\Message\UriInterface;
 use Dromos\Http\Message\Stream;
+use Dromos\Http\Message\StreamInterface;
+use Dromos\Http\Message\UriInterface;
 
 use Dromos\Traits\MessageTrait;
 
@@ -24,6 +25,9 @@ class Request implements ServerRequestInterface
 {
     use MessageTrait;
 
+    /** Largest request body read, in bytes; a larger body is dropped. */
+    private const MAX_BODY_BYTES = 1048576;
+
     protected string $method;
     protected UriInterface $uri;
     protected array $serverParams;
@@ -34,6 +38,14 @@ class Request implements ServerRequestInterface
     protected array $attributes = [];
     protected ?string $requestTarget = null;
 
+    /** False until the body has been read from php://input (see loadBody()). */
+    private bool $bodyLoaded = false;
+
+    /**
+     * Build the request from PHP's globals. The body is read from php://input
+     * the first time it, or the parsed body, is asked for, so requests whose
+     * handlers never look at it skip the read.
+     */
     public function __construct()
     {
         $this->method        = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -43,38 +55,6 @@ class Request implements ServerRequestInterface
         $this->queryParams   = $_GET;
         $this->parsedBody    = $_POST;
         $this->uploadedFiles = $_FILES;
-        $this->body          = new Stream();
-
-        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
-        $maxBodySize = 1048576; // 1MB default limit
-
-        if ($contentLength > $maxBodySize) {
-            $raw = '';
-        } elseif ($contentLength > 0) {
-            $raw = file_get_contents('php://input');
-        } else {
-            $stream = fopen('php://input', 'r');
-            $raw = $stream !== false ? stream_get_contents($stream, $maxBodySize + 1) : '';
-            if ($stream !== false) {
-                fclose($stream);
-            }
-            if ($raw !== false && strlen($raw) > $maxBodySize) {
-                $raw = '';
-            }
-        }
-
-        if ($raw !== false && $raw !== '') {
-            $this->body->write($raw);
-            $this->body->rewind();
-
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (str_contains($contentType, 'application/json')) {
-                $decoded = json_decode($raw, true, 64);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $this->parsedBody = $decoded;
-                }
-            }
-        }
     }
 
     /**
@@ -97,11 +77,8 @@ class Request implements ServerRequestInterface
         $request->queryParams = $queryParams;
         $request->parsedBody = $parsedBody;
         $request->uploadedFiles = [];
-        $request->body = new Stream();
-        if ($body !== '') {
-            $request->body->write($body);
-            $request->body->rewind();
-        }
+        $request->body = new Stream($body);
+        $request->bodyLoaded = true;
         foreach ($headers as $name => $value) {
             $request->headers[$name] = is_array($value) ? $value : [(string)$value];
         }
@@ -186,13 +163,72 @@ class Request implements ServerRequestInterface
 
     public function getParsedBody(): null|array|object
     {
+        $this->loadBody();
         return $this->parsedBody;
     }
     public function withParsedBody(null|array|object $data): static
     {
+        $this->loadBody();
         $clone = clone $this;
         $clone->parsedBody = $data;
         return $clone;
+    }
+
+    public function getBody(): StreamInterface
+    {
+        $this->loadBody();
+        return $this->body;
+    }
+    public function withBody(StreamInterface $body): static
+    {
+        $this->loadBody();
+        $clone = clone $this;
+        $clone->body = $body;
+        return $clone;
+    }
+
+    /**
+     * Read the body, at most MAX_BODY_BYTES of it, and decode a JSON body into
+     * the parsed body. Runs once; a request that is never asked for its body
+     * never reads it.
+     */
+    private function loadBody(): void
+    {
+        if ($this->bodyLoaded) {
+            return;
+        }
+        $this->bodyLoaded = true;
+
+        // A declared length over the limit is dropped without reading; without
+        // one (e.g. chunked), read one byte past the limit to detect overflow
+        $raw = (int) ($this->serverParams['CONTENT_LENGTH'] ?? 0) > self::MAX_BODY_BYTES
+            ? ''
+            : $this->readInput(self::MAX_BODY_BYTES + 1);
+        if (strlen($raw) > self::MAX_BODY_BYTES) {
+            $raw = '';
+        }
+        $this->body = new Stream($raw);
+
+        if ($raw !== '' && str_contains($this->serverParams['CONTENT_TYPE'] ?? '', 'application/json')) {
+            $decoded = json_decode($raw, true, 64);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $this->parsedBody = $decoded;
+            }
+        }
+    }
+
+    /**
+     * Up to $maxBytes of the raw request body.
+     */
+    protected function readInput(int $maxBytes): string
+    {
+        $stream = @fopen('php://input', 'rb');
+        if ($stream === false) {
+            return '';
+        }
+        $raw = stream_get_contents($stream, $maxBytes);
+        fclose($stream);
+        return $raw === false ? '' : $raw;
     }
 
     public function getAttributes(): array

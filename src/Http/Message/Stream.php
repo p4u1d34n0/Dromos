@@ -4,10 +4,16 @@ namespace Dromos\Http\Message;
 
 use Dromos\Http\Message\StreamInterface;
 
+/**
+ * An in-memory stream. Starts with the given content, positioned at the start.
+ */
 class Stream implements StreamInterface
 {
-    protected string $data = '';
     protected int $position = 0;
+
+    public function __construct(protected string $data = '')
+    {
+    }
 
     public function __toString(): string
     {

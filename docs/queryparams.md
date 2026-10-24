@@ -1,19 +1,21 @@
-## USecase for query params
+# Query parameters
 
-# Example with default request handling:
+Ask for the request by type and read the query string from it:
 
 ```php
-$request = new Dromos\Http\Request();
-echo $request->getQueryParam('name');
+use Dromos\Http\Request;
+use Dromos\Http\Response;
+
+// GET /search?name=Deano
+Router::Get('/search', function (Request $request, Response $response) {
+    $name = $request->getQueryParams()['name'] ?? null;
+    return $response->json(['name' => $name]);
+});
 ```
 
-# Example with custom parameters (for testing):
+In tests, build a request with `Request::create()` instead of PHP's globals:
+
 ```php
-$customParams = [
-    'query' => ['name' => 'Deano'],
-    'body' => ['email' => 'deano@example.com'],
-    'files' => []
-];
-$request = new Dromos\Http\Request($customParams);
-echo $request->getQueryParam('name'); // Outputs 'Deano'
+$request = Request::create('GET', '/search?name=Deano', queryParams: ['name' => 'Deano']);
+$request->getQueryParams()['name']; // "Deano"
 ```

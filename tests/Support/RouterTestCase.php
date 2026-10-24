@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Base class for tests that register routes and dispatch requests through
  * the static Router. Resets router state around each test and silences the
- * error_log line RouterExceptionHandler writes for every 404, 405 and 500.
+ * error_log line RouterExceptionHandler writes for every 500.
  */
 abstract class RouterTestCase extends TestCase
 {

@@ -223,3 +223,14 @@ Each row creates a `Request`, dispatches it, and builds a JSON `Response`. Resul
 | 2,000 | fpm | register all + 1 parameter, last | 1576.7 | 1450.3 | 1.1× |
 
 v1.1.0 tested each route in turn, building that route's regex as it went, so the cost grew with the size of the route table. The compiled matcher's cost stays nearly flat. PHP-FPM runs barely change, because registering the routes on every request dominates there.
+
+## Controller Construction Benchmark
+
+`controllers.php` simulates a PHP-FPM request with controller routes. It registers 200 routes across 50 controller classes, then dispatches one request:
+
+```bash
+php -d opcache.enable_cli=1 benchmark/controllers.php empty   # empty constructors
+php -d opcache.enable_cli=1 benchmark/controllers.php pdo     # constructors open a DB connection
+```
+
+Up to v1.1.0, each controller route created its own controller instance at registration: 200 instances per request in this benchmark, whichever route was hit. Controllers are now created on first dispatch, so this benchmark creates one.

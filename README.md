@@ -505,6 +505,17 @@ How it works:
 - **Every route type works.** Closures, controllers, groups and middleware all behave exactly as they do without the cache.
 - **A broken cache never fails a request.** This is true of both caches: if the file can't be written, the error is logged and the routes are compiled as normal. A corrupt or outdated file is rebuilt.
 
+## Preloading
+
+Under PHP-FPM, add Dromos to opcache's preload so its classes are compiled once when PHP-FPM starts, instead of being loaded on each request:
+
+```ini
+opcache.preload=/var/www/app/vendor/pauldeano/dromos/preload.php
+opcache.preload_user=www-data
+```
+
+Restart PHP-FPM after upgrading Dromos. If your app already has a preload script, `require` this one from it.
+
 **Security:** cache files are run with `require`. Keep it in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
 
 **Upgrading from 1.1:** the old JSON cache file is replaced automatically. In 1.1, routes in the cache file could be dispatched without being registered. That skipped their middleware and kept deleted routes alive. This still works in 1.2 but triggers an `E_USER_DEPRECATED` notice, and it stops working in 2.0. Register your routes on every request.

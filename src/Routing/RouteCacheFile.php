@@ -127,13 +127,14 @@ final class RouteCacheFile
      */
     private function isPhpFile(): bool
     {
-        if (!is_file($this->path)) {
-            return false;
-        }
         // Only files that passed this check are ever required, so a file opcache
-        // already holds is one of ours and the read below can be skipped
+        // already holds is one of ours, and the file system needn't be touched
+        // (save() and clear() invalidate opcache's copy)
         if (function_exists('opcache_is_script_cached') && @opcache_is_script_cached($this->path)) {
             return true;
+        }
+        if (!is_file($this->path)) {
+            return false;
         }
         $handle = @fopen($this->path, 'rb');
         if ($handle === false) {

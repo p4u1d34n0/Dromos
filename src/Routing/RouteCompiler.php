@@ -7,17 +7,18 @@ namespace Dromos\Routing;
 /**
  * Compiles registered route URLs into a CompiledRoutes table.
  *
- * For each method, every route URL goes in a hash map for exact matches, and
- * routes with {placeholders} are folded, in registration order, into combined
- * regexes where (*MARK) identifies the route that matched. Only the URLs and
- * their order are compiled, never the handlers, so the table is plain data.
- *
- * The regexes are grouped by prefix: the whole segments before a route's
- * first placeholder ("/users" for "/users/{id}/posts"). A path can only match
- * routes whose prefix is one of its own leading segments, so each prefix gets
- * regexes holding its routes and those of its shorter prefixes, in
- * registration order. Matching then tries one small group instead of every
+ * For each method, every route URL goes in a hash map for exact matches.
+ * Routes with {placeholders} are grouped by prefix: the whole segments
+ * before their first placeholder ("/users" for "/users/{id}/posts"). A path
+ * can only match routes whose prefix is one of its own leading segments, so
+ * a group's routes, with those of its shorter prefixes, are folded in
+ * registration order into combined regexes, where (*MARK) identifies the
+ * route that matched. Matching then tries one small group instead of every
  * route, and the first registered route still wins.
+ *
+ * compile() only sorts the routes into groups; each group's regex is built
+ * by group() when CompiledRoutes first needs it. Only the URLs and their
+ * order are compiled, never the handlers, so the table is plain data.
  */
 final class RouteCompiler
 {
@@ -32,57 +33,52 @@ final class RouteCompiler
     {
         $table = [];
         foreach ($routes as $method => $list) {
-            $table[$method] = $this->compileMethod(array_keys($list));
+            $exact = [];
+            $urls = [];
+            $mark = 0;
+            foreach (array_keys($list) as $index => $url) {
+                $url = (string) $url;
+                $exact[$url] = $index + 1;
+                if (str_contains($url, '{')) {
+                    $urls[self::prefixOf($url)][$mark++] = [$url, $index + 1];
+                }
+            }
+            $table[$method] = [
+                'exact'         => $exact,
+                'prefixes'      => array_fill_keys(array_keys($urls), false),
+                'parameterised' => [],
+                'urls'          => $urls,
+            ];
         }
         return CompiledRoutes::fromArray($table);
     }
 
     /**
-     * @param array<int, string|int> $urls
-     * @return array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}
+     * Build one group: the combined regexes for these routes, and for each
+     * route that has placeholders, its URL, placeholder names and position.
+     *
+     * @param array<int, array{0:string,1:int}> $routes [route URL, position] keyed by mark, in registration order
+     * @return array{0:string[],1:array<int, array{0:string,1:string[],2:int}>}
      */
-    private function compileMethod(array $urls): array
+    public static function group(array $routes): array
     {
-        $exact = [];
+        $patterns = [];
         $parameterised = [];
-        /** @var array<string, array<int, string>> $patternsByPrefix prefix => [mark => pattern] */
-        $patternsByPrefix = [];
-
-        foreach ($urls as $index => $url) {
-            $url = (string) $url;
-            $position = $index + 1;
-            $exact[$url] = $position;
-
-            $compiled = $this->compilePattern($url);
+        foreach ($routes as $mark => [$url, $position]) {
+            $compiled = self::pattern($url);
             if ($compiled === null) {
                 continue;
             }
-            [$pattern, $names] = $compiled;
-
-            $mark = count($parameterised);
-            $parameterised[$mark] = [$url, $names, $position];
-            $patternsByPrefix[self::prefixOf($url)][$mark] = $pattern . '(*MARK:' . $mark . ')';
+            $parameterised[$mark] = [$url, $compiled[1], $position];
+            $patterns[] = $compiled[0] . '(*MARK:' . $mark . ')';
         }
 
-        $prefixes = [];
-        foreach (array_keys($patternsByPrefix) as $prefix) {
-            // This prefix's routes plus those of its shorter prefixes, in registration order
-            $patterns = [];
-            for ($shorter = (string) $prefix; ; $shorter = self::parentOf($shorter)) {
-                $patterns += $patternsByPrefix[$shorter] ?? [];
-                if ($shorter === '') {
-                    break;
-                }
-            }
-            ksort($patterns);
-
-            // (?| ... ) restarts group numbering in each branch, so params are always $m[1..n]
-            foreach (array_chunk($patterns, self::ROUTES_PER_REGEX) as $chunk) {
-                $prefixes[(string) $prefix][] = '~^(?|' . implode('|', $chunk) . ')$~';
-            }
+        // (?| ... ) restarts group numbering in each branch, so params are always $m[1..n]
+        $regexes = [];
+        foreach (array_chunk($patterns, self::ROUTES_PER_REGEX) as $chunk) {
+            $regexes[] = '~^(?|' . implode('|', $chunk) . ')$~';
         }
-
-        return ['exact' => $exact, 'prefixes' => $prefixes, 'parameterised' => $parameterised];
+        return [$regexes, $parameterised];
     }
 
     /**
@@ -108,12 +104,8 @@ final class RouteCompiler
      *
      * @return array{0:string,1:string[]}|null [pattern, placeholder names]
      */
-    private function compilePattern(string $url): ?array
+    private static function pattern(string $url): ?array
     {
-        if (!str_contains($url, '{')) {
-            return null;
-        }
-
         // Odd entries are the {placeholders}, even entries the literal text between them
         $parts = preg_split('/(\{[^}]+\})/', $url, -1, PREG_SPLIT_DELIM_CAPTURE);
         if ($parts === false || count($parts) === 1) {

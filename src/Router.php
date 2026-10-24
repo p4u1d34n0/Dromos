@@ -8,12 +8,10 @@ use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\ServerRequestInterface;
 use Dromos\Http\Middleware\MiddlewareInterface;
 use Dromos\Http\Middleware\RequestHandlerInterface;
-use Dromos\Routing\CachedRoutes;
 use Dromos\Routing\CompiledRoutes;
 use Dromos\Routing\ControllerResolverInterface;
 use Dromos\Routing\HandlerInvoker;
 use Dromos\Routing\MiddlewarePipeline;
-use Dromos\Routing\RouteCacheFile;
 use Dromos\Routing\RouteCompiler;
 use Dromos\Routing\SharedControllerResolver;
 use Dromos\Traits\RouteCacheTrait;
@@ -32,17 +30,12 @@ class Router implements RequestHandlerInterface
     /** @var array<string, array<string, Closure|array{0:class-string,1:string}>> Handlers keyed by method, then route URL */
     protected static array $routes = [];
 
-    /** @var array<int, array{0:string,1:string}> [controller class, missing method] */
-    private static array $missingRoutes = [];
-
     /** @var MiddlewareInterface[] */
     private array $middlewareStack = [];
 
     /** @var array<string, list<MiddlewareInterface|class-string<MiddlewareInterface>>> Per-route middleware keyed by "METHOD:/path" */
     protected static array $routeMiddleware = [];
 
-    /** @var array<string, true> Middleware class names already checked */
-    private static array $checkedMiddleware = [];
 
     /** Compiled from the routes on first dispatch, dropped whenever they change. */
     private static ?CompiledRoutes $matchTable = null;
@@ -74,7 +67,6 @@ class Router implements RequestHandlerInterface
     public static function reset(): void
     {
         self::$routes = [];
-        self::$missingRoutes = [];
         self::$routeMiddleware = [];
         self::disableCache();
         self::forgetMatchTable();
@@ -131,71 +123,6 @@ class Router implements RequestHandlerInterface
         return self::addRoute('PATCH',  $url, $target);
     }
 
-    /**
-     * Register the routes defined in a PHP file.
-     *
-     * With a cache file, the first request runs the routes file and stores its
-     * routes, compiled, in the cache. Later requests dispatch from the cache
-     * without running the routes file, registering or compiling anything,
-     * until the routes file changes. Only routes to controllers, with
-     * middleware given by class name, can be stored; if the file defines any
-     * others, it simply runs on every request. Routes registered before this call also
-     * mean the file runs every time, so their order is kept.
-     *
-     * The cache file is run with `require`: keep it in a directory only the
-     * application can write to.
-     *
-     * @throws \InvalidArgumentException If the routes file doesn't exist
-     */
-    public static function loadRoutes(string $routesFile, ?string $cacheFile = null): void
-    {
-        $signature = CachedRoutes::signatureOfFile($routesFile)
-            ?? throw new \InvalidArgumentException("Routes file {$routesFile} does not exist.");
-        $cache = $cacheFile !== null && self::$routes === [] ? new RouteCacheFile($cacheFile) : null;
-
-        $cached = $cache?->load();
-        if ($cached !== null && $cached->signature === $signature) {
-            self::$routes = $cached->handlers;
-            self::$routeMiddleware = $cached->middleware;
-            self::$matchTable = $cached->table;
-            return;
-        }
-
-        (static function (string $file): void {
-            require $file;
-        })($routesFile);
-
-        if ($cache !== null && self::routesAreCacheable()) {
-            self::$matchTable = (new RouteCompiler())->compile(self::$routes);
-            /** @var array<string, list<class-string<MiddlewareInterface>>> $middleware checked by routesAreCacheable() */
-            $middleware = self::$routeMiddleware;
-            $cache->save(new CachedRoutes($signature, self::$matchTable, CachedRoutes::handlersOf(self::$routes), $middleware));
-        }
-    }
-
-    /**
-     * True if every route is a controller route whose middleware are class
-     * names, so the routes can be stored and dispatched from a cache file.
-     */
-    private static function routesAreCacheable(): bool
-    {
-        foreach (self::$routeMiddleware as $middleware) {
-            foreach ($middleware as $entry) {
-                if (!is_string($entry)) {
-                    return false;
-                }
-            }
-        }
-        foreach (self::$routes as $routes) {
-            foreach ($routes as $handler) {
-                if ($handler instanceof Closure) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     public static function Resource(string $url, string $controller): RouteResource
     {
         $resource = new RouteResource($url, $controller);
@@ -232,28 +159,10 @@ class Router implements RequestHandlerInterface
     public static function setRouteMiddleware(string $method, string $url, array $middleware): void
     {
         foreach ($middleware as $entry) {
-            self::checkMiddleware($entry);
+            MiddlewarePipeline::check($entry);
         }
         $key = strtoupper($method) . ':' . $url;
         self::$routeMiddleware[$key] = array_merge(self::$routeMiddleware[$key] ?? [], $middleware);
-    }
-
-    /**
-     * @throws \InvalidArgumentException If $middleware is neither a MiddlewareInterface
-     *                                   nor the name of a class implementing it
-     */
-    private static function checkMiddleware(mixed $middleware): void
-    {
-        if ($middleware instanceof MiddlewareInterface || (is_string($middleware) && isset(self::$checkedMiddleware[$middleware]))) {
-            return;
-        }
-        if (!is_string($middleware) || !is_subclass_of($middleware, MiddlewareInterface::class)) {
-            throw new \InvalidArgumentException(
-                'Route middleware must implement ' . MiddlewareInterface::class . ', got '
-                . (is_string($middleware) ? $middleware : get_debug_type($middleware)) . '.'
-            );
-        }
-        self::$checkedMiddleware[$middleware] = true;
     }
 
     protected static function addRoute(string $method, string $url, $target): string
@@ -270,16 +179,11 @@ class Router implements RequestHandlerInterface
         if ($target instanceof Closure) {
             return $target;
         }
-        if (is_array($target) && count($target) === 2 && is_string($target[0])) {
-            // Controllers are created on first dispatch by the controller resolver, not here
-            [$class, $method] = $target;
-            if (!class_exists($class)) {
-                throw new \InvalidArgumentException("Route target class {$class} does not exist.");
-            }
-            if (!method_exists($class, $method)) {
-                self::$missingRoutes[] = [$class, $method];
-            }
-            return [$class, $method];
+        if (is_array($target) && count($target) === 2 && is_string($target[0]) && is_string($target[1])) {
+            // The controller class isn't loaded here: registering a route must not
+            // load every controller's file. The resolver loads and checks it when
+            // a request first reaches the route.
+            return [$target[0], $target[1]];
         }
         throw new \InvalidArgumentException("Invalid route target for URL.");
     }
@@ -324,8 +228,9 @@ class Router implements RequestHandlerInterface
                     return self::invoker()->invoke($target, $match->params, $request);
                 }
                 return MiddlewarePipeline::wrap(
-                    array_map(self::middlewareInstance(...), $middleware),
-                    fn(ServerRequestInterface $r) => self::invoker()->invoke($target, $match->params, $r)
+                    $middleware,
+                    fn(ServerRequestInterface $r) => self::invoker()->invoke($target, $match->params, $r),
+                    self::resolver()
                 )->handle($request);
             }
 
@@ -389,19 +294,5 @@ class Router implements RequestHandlerInterface
     private static function resolver(): ControllerResolverInterface
     {
         return self::$controllerResolver ??= new SharedControllerResolver();
-    }
-
-    /**
-     * @param MiddlewareInterface|class-string<MiddlewareInterface> $middleware
-     */
-    private static function middlewareInstance(MiddlewareInterface|string $middleware): MiddlewareInterface
-    {
-        if ($middleware instanceof MiddlewareInterface) {
-            return $middleware;
-        }
-        $instance = self::resolver()->resolve($middleware);
-        return $instance instanceof MiddlewareInterface
-            ? $instance
-            : throw new \UnexpectedValueException("The resolver returned a " . get_debug_type($instance) . " for middleware {$middleware}.");
     }
 }

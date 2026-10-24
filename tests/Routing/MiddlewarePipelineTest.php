@@ -61,6 +61,44 @@ final class MiddlewarePipelineTest extends TestCase
     }
 
     /** Middleware that records its name on the way in and on the way out. */
+
+    #[Test]
+    public function test_middleware_given_by_class_name_is_built_by_the_resolver(): void
+    {
+        $resolver = new class implements \Dromos\Routing\ControllerResolverInterface {
+            /** @var string[] */
+            public array $resolved = [];
+
+            public function resolve(string $class): object
+            {
+                $this->resolved[] = $class;
+                return new $class();
+            }
+        };
+
+        $response = MiddlewarePipeline::wrap([PipelineTagMiddleware::class], fn() => new Response(), $resolver)
+            ->handle(Request::create());
+
+        $this->assertSame([PipelineTagMiddleware::class], $resolver->resolved);
+        $this->assertSame(['tagged'], $response->getHeader('X-Tag'));
+    }
+
+    #[Test]
+    public function test_check_accepts_middleware_and_rejects_anything_else(): void
+    {
+        MiddlewarePipeline::check(new PipelineTagMiddleware());
+        MiddlewarePipeline::check(PipelineTagMiddleware::class);
+
+        foreach ([\stdClass::class, 'No\\Such\\Class', 42, new \stdClass()] as $notMiddleware) {
+            try {
+                MiddlewarePipeline::check($notMiddleware);
+                $this->fail('accepted ' . get_debug_type($notMiddleware));
+            } catch (\InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     private function appending(string $name): MiddlewareInterface
     {
         return new class ($name) implements MiddlewareInterface {
@@ -75,5 +113,13 @@ final class MiddlewarePipelineTest extends TestCase
                     ->withAddedHeader('X-Trail', $this->name . '<');
             }
         };
+    }
+}
+
+final class PipelineTagMiddleware implements MiddlewareInterface
+{
+    public function handle(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        return $handler->handle($request)->withHeader('X-Tag', 'tagged');
     }
 }

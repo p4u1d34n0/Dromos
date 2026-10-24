@@ -14,8 +14,16 @@ final class SharedControllerResolver implements ControllerResolverInterface
     /** @var array<string, object> Instances keyed by lower-case class name */
     private array $instances = [];
 
+    /** @var array<string, object> The same instances keyed by the name as given, to skip normalising it */
+    private array $byName = [];
+
+    /**
+     * @throws \InvalidArgumentException If the class doesn't exist
+     */
     public function resolve(string $class): object
     {
-        return $this->instances[strtolower(ltrim($class, '\\'))] ??= new $class();
+        return $this->byName[$class] ??= $this->instances[strtolower(ltrim($class, '\\'))] ??= class_exists($class)
+            ? new $class()
+            : throw new \InvalidArgumentException("Controller class {$class} does not exist.");
     }
 }

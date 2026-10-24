@@ -69,12 +69,51 @@ final class RouterControllerTest extends RouterTestCase
     }
 
     #[Test]
-    public function test_an_unknown_controller_class_is_rejected_at_registration(): void
+    public function test_registering_a_route_does_not_load_its_controller_class(): void
+    {
+        $requested = [];
+        $spy = function (string $class) use (&$requested): void {
+            $requested[] = $class;
+        };
+        spl_autoload_register($spy, prepend: true);
+        try {
+            Router::Get('/a', ['Dromos\\Tests\\NotLoadedYetController', 'show']);
+        } finally {
+            spl_autoload_unregister($spy);
+        }
+
+        $this->assertSame([], $requested);
+    }
+
+    #[Test]
+    public function test_an_unknown_controller_class_is_a_logged_500_naming_the_class(): void
+    {
+        $log = (string) tempnam(sys_get_temp_dir(), 'dromos-log');
+        ini_set('error_log', $log);
+        try {
+            Router::Get('/a', [NoSuchController::class, 'show']);
+
+            $this->assertSame(500, $this->statusOf('GET', '/a'));
+            $this->assertStringContainsString('Controller class Dromos\\Tests\\NoSuchController does not exist.', (string) file_get_contents($log));
+        } finally {
+            @unlink($log);
+        }
+    }
+
+    #[Test]
+    public function test_an_unknown_controller_method_is_a_500(): void
+    {
+        Router::Get('/a', [CountingController::class, 'noSuchMethod']);
+
+        $this->assertSame(500, $this->statusOf('GET', '/a'));
+    }
+
+    #[Test]
+    public function test_a_target_that_is_not_a_closure_or_controller_pair_is_rejected(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Route target class Dromos\\Tests\\NoSuchController does not exist.');
 
-        Router::Get('/a', [NoSuchController::class, 'show']);
+        Router::Get('/a', [CountingController::class, 42]);
     }
 
     #[Test]

@@ -180,7 +180,7 @@ Nested groups inherit the parent's prefix and middleware stack at the point of c
 
 ## Lean mode
 
-`Router::handle()` builds a request and a response, runs middleware and calls the handler for you. If you don't need those, `Router::match()` only finds the route, as a matcher-only router such as FastRoute does, and you call the handler yourself. It's about three times faster per request; see the [router comparison](benchmark/compare/README.md).
+`Router::handle()` builds a request and a response, runs middleware and calls the handler for you. If you don't need those, `Router::match()` only finds the route, as a matcher-only router such as FastRoute does, and you call the handler yourself. In a worker it's three to five times faster per request; see the [router comparison](benchmark/compare/README.md).
 
 ```php
 // public/index.php

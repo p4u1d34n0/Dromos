@@ -7,7 +7,7 @@
 ## Key Features
 
 * **PSR-7 / PSR-15 Inspired** — Native HTTP message and middleware implementations with PSR-compatible APIs. No external libraries required.
-* **Fast Routing** — Expressive routes with parameters, wildcards, route groups, and HTTP method support.
+* **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus combined regexes, so lookups stay fast as the route table grows.
 * **Route Groups** — Group routes under a shared prefix with per-group middleware.
 * **Route Caching** — Serialize and load route trees to eliminate route parsing overhead in production.
 * **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
@@ -73,6 +73,21 @@ Router::Get("/users/{id}", function (Request $request, Response $response) {
     return $response->json(['id' => $id]);
 });
 ```
+
+A placeholder matches one path segment (anything except `/`). If a placeholder name appears twice, both segments must hold the same value.
+
+### Matching Order
+
+Routes are matched in the order they are registered, and the first match wins. Register specific routes before general ones:
+
+```php
+Router::Get("/users/me", [UserController::class, 'me']);     // matches /users/me
+Router::Get("/users/{id}", [UserController::class, 'show']); // matches everything else
+```
+
+If `/users/{id}` were registered first, it would also match `/users/me`.
+
+Under the hood, the router builds a lookup table the first time it dispatches, and again whenever routes change. Exact paths are found with a single hash lookup. Parameterised routes are combined into a few large regexes, so the router doesn't test them one at a time. In a long-running server such as OpenSwoole, the table is built once and reused for every request.
 
 ## Using Controllers
 
@@ -474,6 +489,13 @@ $response = $router->handle(new Request());
 ---
 
 # Testing
+
+Run the test suite with:
+
+```bash
+composer install
+vendor/bin/phpunit
+```
 
 For unit testing, use `Router::reset()` between tests to clear all registered routes and middleware:
 

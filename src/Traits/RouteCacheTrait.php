@@ -14,6 +14,11 @@ trait RouteCacheTrait
     protected static array $compiledRoutes = [];
 
     /**
+     * Drop any match table built from the previous route set.
+     */
+    abstract protected static function forgetMatchTable(): void;
+
+    /**
      * Turn on route caching to the given file.
      */
     public static function enableCache(string $path): void
@@ -26,6 +31,7 @@ trait RouteCacheTrait
             $parsed = $data !== false ? json_decode($data, true) : [];
             static::$compiledRoutes = is_array($parsed) ? $parsed : [];
         }
+        static::forgetMatchTable();
     }
 
     /**
@@ -36,6 +42,7 @@ trait RouteCacheTrait
         static::$useCache        = false;
         static::$cacheFile       = null;
         static::$compiledRoutes  = [];
+        static::forgetMatchTable();
     }
 
     /**
@@ -47,6 +54,7 @@ trait RouteCacheTrait
             @unlink(static::$cacheFile);
         }
         static::$compiledRoutes = [];
+        static::forgetMatchTable();
     }
 
     /**

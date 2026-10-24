@@ -32,9 +32,13 @@ function load(string $pattern): array
     return array_map(fn(string $f) => json_decode((string) file_get_contents($f), true, flags: JSON_THROW_ON_ERROR), array_values($files));
 }
 
-$scripts = ['inprocess' => load("$dir/inprocess-*.json"), 'http' => load("$dir/http-*.json")];
+$scripts = [
+    'inprocess' => load("$dir/inprocess-*.json"),
+    'matchers'  => load("$dir/matchers-*.json"),
+    'http'      => load("$dir/http-*.json"),
+];
 $footprint = load("$dir/footprint.json")[0] ?? null;
-$all = [...$scripts['inprocess'], ...$scripts['http'], ...array_filter([$footprint])];
+$all = [...array_merge(...array_values($scripts)), ...array_filter([$footprint])];
 if ($all === []) {
     fwrite(STDERR, "No results in $dir\n");
     exit(1);
@@ -82,14 +86,17 @@ foreach ($scripts as $script => $runs) {
         }
     }
 
-    $title = $script === 'inprocess' ? 'In-process' : 'HTTP';
+    $title = ['inprocess' => 'In-process', 'matchers' => 'Matching only', 'http' => 'HTTP'][$script];
     $opcache = array_unique(array_map(fn(array $run) => $run['notes']['opcache'] ? 'on' : 'off', $runs));
-    printf("## %s: µs per request, median of %d run%s, opcache %s\n\n", $title, count($runs), count($runs) === 1 ? '' : 's', implode('/', $opcache));
+    printf("## %s: µs per %s, median of %d run%s, opcache %s\n\n", $title, $script === 'matchers' ? 'match' : 'request', count($runs), count($runs) === 1 ? '' : 's', implode('/', $opcache));
+    if ($script === 'matchers') {
+        echo "Each router's URL matcher alone, read from its compiled cache: no request or response objects, middleware or handler call.\n\n";
+    }
     if ($script === 'http') {
         $floors = array_map(fn(array $run) => $run['notes']['floor_us'], $runs);
         printf("PHP's built-in server and ab alone take %.0f µs, and that is part of every number below.\n\n", Results::median($floors));
     }
-    $decimals = $script === 'inprocess' ? 2 : 0;
+    $decimals = $script === 'http' ? 0 : 2;
 
     foreach ($perRun as $routes => $rows) {
         $routers = array_values(array_intersect(array_keys(Contenders::ALL), array_keys(reset($rows))));

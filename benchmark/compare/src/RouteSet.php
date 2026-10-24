@@ -39,20 +39,22 @@ final class RouteSet
 
     /**
      * The requests timed for this set, with the body each must return
-     * (null: any body, the status alone is checked).
+     * (null: any body, the status alone is checked), and the action and
+     * route parameters a matcher must find (null and [] when none matches).
      *
-     * @return array<string, array{0:string,1:string,2:int,3:?string}> name => [method, path, status, body]
+     * @return array<string, array{0:string,1:string,2:int,3:?string,4:?string,5:array<string,string>}>
+     *         name => [method, path, status, body, action, params]
      */
     public function requests(): array
     {
         $last = $this->resources - 1;
         return [
-            'static, first'  => ['GET', '/res0', 200, '{"ok":true}'],
-            'static, last'   => ['GET', "/res$last", 200, '{"ok":true}'],
-            'param, last'    => ['GET', "/res$last/42", 200, '{"id":"42"}'],
-            '2 params, last' => ['GET', "/res$last/42/items/7", 200, '{"id":"42","item":"7"}'],
-            'POST, last'     => ['POST', "/res$last", 200, '{"ok":true}'],
-            '404'            => ['GET', '/nope/nope/nope', 404, null],
+            'static, first'  => ['GET', '/res0', 200, '{"ok":true}', 'index', []],
+            'static, last'   => ['GET', "/res$last", 200, '{"ok":true}', 'index', []],
+            'param, last'    => ['GET', "/res$last/42", 200, '{"id":"42"}', 'show', ['id' => '42']],
+            '2 params, last' => ['GET', "/res$last/42/items/7", 200, '{"id":"42","item":"7"}', 'item', ['id' => '42', 'item' => '7']],
+            'POST, last'     => ['POST', "/res$last", 200, '{"ok":true}', 'store', []],
+            '404'            => ['GET', '/nope/nope/nope', 404, null, null, []],
         ];
     }
 

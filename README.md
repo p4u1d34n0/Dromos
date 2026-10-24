@@ -18,7 +18,7 @@
 
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
 
-- **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs about 5 µs of routing work at any size. See the [router comparison](benchmark/compare/README.md).
+- **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs under 5 µs of routing work at any size. Its URL matcher on its own is faster than Symfony's in every case measured, and faster than FastRoute's for routes with parameters and 404s from 200 routes up. See the [router comparison](benchmark/compare/README.md).
 - **Lean Footprint** — No dependencies. A request loads 20 small files (about 1,900 lines).
 - **High Concurrency** — Custom emitters + OpenSwoole handle 10k+ req/s.
 - **Zero War Story** — No imposed folder structure. Organise your code your way.

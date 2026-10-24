@@ -3,7 +3,7 @@
 namespace Dromos\Http\Emitter;
 
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Emitter\EmitterInterface;
+use Dromos\Http\Message\Stream;
 
 
 /**
@@ -103,7 +103,10 @@ class Emitter implements EmitterInterface
     }
 
     /**
-     * Emit the response body
+     * Emit the response body: an in-memory body in one write, any other
+     * stream in 8 KB chunks so large files never sit in memory whole. Output
+     * goes through PHP's normal output layer, so a caller's output buffer
+     * (compression, testing) still receives it.
      *
      * @param ResponseInterface $response
      * @return void
@@ -114,33 +117,17 @@ class Emitter implements EmitterInterface
         $this->cleanOutputBuffer();
 
         $body = $response->getBody();
-
-        // If body is empty, return early
-        if ($body->getSize() === 0) {
+        if ($body instanceof Stream) {
+            echo (string) $body;
             return;
         }
 
-        // Rewind the stream before reading
         if ($body->isSeekable()) {
             $body->rewind();
         }
-
-        // For large responses, stream the output in chunks to preserve memory
-        if ($body->isReadable()) {
-            while (!$body->eof()) {
-                echo $body->read(8192);
-
-                // Flush after each chunk if output buffering is enabled
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
-                flush();
-            }
-            return;
+        while (!$body->eof()) {
+            echo $body->read(8192);
         }
-
-        // Fallback: get contents and output
-        echo $body->getContents();
     }
 
     /**

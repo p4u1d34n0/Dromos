@@ -2,10 +2,10 @@
 
 namespace Dromos\Http;
 
+use Dromos\Enums\HttpStatusCodes;
 use Dromos\Http\Message\ResponseInterface;
-use Dromos\Traits\MessageTrait;
-
 use Dromos\Http\Message\Stream;
+use Dromos\Traits\MessageTrait;
 
 /**
  * Class Response
@@ -18,23 +18,28 @@ class Response implements ResponseInterface
     use MessageTrait;
 
     protected int $statusCode = 200;
-    protected string $reasonPhrase = 'OK';
+
+    /** Empty means the standard phrase for the status code. */
+    protected string $reasonPhrase = '';
 
     public function __construct(int $code = 200, string $reason = '')
     {
         $this->statusCode   = $code;
-        $this->reasonPhrase = $reason ?: $this->reasonPhrase;
+        $this->reasonPhrase = $reason;
         $this->body         = new Stream();
     }
 
+    /**
+     * Clones get their own copy of an in-memory body, so writing to one never
+     * changes the other. Other streams (files, sockets) are shared, as PSR-7
+     * allows, rather than read into memory.
+     */
     public function __clone()
     {
-        $original = $this->body;
-        $this->body = new Stream();
-        $contents = (string) $original;
-        if ($contents !== '') {
-            $this->body->write($contents);
-            $this->body->rewind();
+        if ($this->body instanceof Stream) {
+            $position = $this->body->tell();
+            $this->body = new Stream((string) $this->body);
+            $this->body->seek($position);
         }
     }
 
@@ -46,36 +51,33 @@ class Response implements ResponseInterface
     {
         $c = clone $this;
         $c->statusCode = $code;
-        if ($reason) $c->reasonPhrase = $reason;
+        $c->reasonPhrase = $reason;
         return $c;
     }
     public function getReasonPhrase(): string
     {
-        return $this->reasonPhrase;
+        return $this->reasonPhrase !== ''
+            ? $this->reasonPhrase
+            : (HttpStatusCodes::HTTP_STATUS_CODES[$this->statusCode] ?? '');
     }
 
-    public function json(array $data, int $status = 200): static
+    /**
+     * @param int $flags json_encode() flags; JSON_THROW_ON_ERROR is always added
+     * @throws \JsonException If the data can't be encoded
+     */
+    public function json(array $data, int $status = 200, int $flags = 0): static
     {
-        $clone = $this->withStatus($status)
-                      ->withHeader('Content-Type', 'application/json');
-        $clone->getBody()->write(json_encode($data));
-        return $clone;
+        return $this->withPayload($status, 'application/json', json_encode($data, $flags | JSON_THROW_ON_ERROR));
     }
 
     public function text(string $data, int $status = 200): static
     {
-        $clone = $this->withStatus($status)
-                      ->withHeader('Content-Type', 'text/plain');
-        $clone->getBody()->write($data);
-        return $clone;
+        return $this->withPayload($status, 'text/plain', $data);
     }
 
     public function html(string $data, int $status = 200): static
     {
-        $clone = $this->withStatus($status)
-                      ->withHeader('Content-Type', 'text/html; charset=UTF-8');
-        $clone->getBody()->write($data);
-        return $clone;
+        return $this->withPayload($status, 'text/html; charset=UTF-8', $data);
     }
 
     public function noContent(): static
@@ -83,11 +85,26 @@ class Response implements ResponseInterface
         return $this->withStatus(204);
     }
 
+    /**
+     * @throws \JsonException If the data can't be encoded
+     */
     public function created(array $data = []): static
     {
-        $clone = $this->withStatus(201)
-                      ->withHeader('Content-Type', 'application/json');
-        $clone->getBody()->write(json_encode($data));
+        return $this->json($data, 201);
+    }
+
+    /**
+     * A copy with this status, Content-Type and body (replacing any body it had).
+     * The content type is a trusted constant, so header validation is skipped.
+     */
+    private function withPayload(int $status, string $contentType, string $content): static
+    {
+        $clone = clone $this;
+        $clone->statusCode = $status;
+        $clone->reasonPhrase = '';
+        $clone->putHeader('Content-Type', [$contentType]);
+        $clone->body = new Stream($content);
+        $clone->body->seek(strlen($content));
         return $clone;
     }
 

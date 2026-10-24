@@ -2,11 +2,9 @@
 
 namespace Dromos;
 
-use Dromos\Http\Message\ResponseInterface;
-use Dromos\Http\Message\Stream;
-use Dromos\Http\Response;
-
 use Dromos\Enums\HttpStatusCodes;
+use Dromos\Http\Message\ResponseInterface;
+use Dromos\Http\Response;
 
 /**
  * Exception handler for router-related exceptions
@@ -17,7 +15,8 @@ use Dromos\Enums\HttpStatusCodes;
 class RouterExceptionHandler
 {
     /**
-     * Handle any Throwable during routing/dispatch and return a PSR-7 ResponseInterface.
+     * Log a Throwable raised during routing or dispatch and return its JSON
+     * error response.
      *
      * @param \Throwable $e The exception to handle
      * @param int $errorCode Optional HTTP status code to use (defaults to 500)
@@ -26,53 +25,34 @@ class RouterExceptionHandler
      */
     public static function handle(\Throwable $e, int $errorCode = 500, array $args = []): ResponseInterface
     {
-        // Log it
         error_log('[RouterException] ' . $e->getMessage());
 
-        // Start with a fresh PSR-7 Response
-        $response = new Response();
-
-        // 1) Set status code (default 500 or provided code)
-        $response = $response->withStatus($errorCode);
-
-        // 2) Set Content-Type header
-        $response = $response->withHeader('Content-Type', 'application/json');
-
-        // 3) Build the error payload — only expose messages from RouterException, not generic Throwables
-        $message = ($e instanceof RouterException)
-            ? $e->getMessage()
-            : 'Internal Server Error';
-
-        $payload = [
-            'error'   => self::getStatusText($errorCode),
-            'message' => $message,
-            'status'  => $errorCode,
-        ];
-
-        // Add additional arguments if provided
-        if (!empty($args)) {
-            $payload['details'] = $args;
-        }
-
-        // 4) Create a PSR-7 stream and write the body
-        $stream = new Stream();
-        $stream->write(json_encode($payload, JSON_UNESCAPED_SLASHES));
-
-        // 5) Attach the stream
-        $response = $response->withBody($stream);
-
-        return $response;
+        return self::render($e, $errorCode, $args);
     }
 
     /**
-     * Get a text representation of an HTTP status code
+     * The JSON error response for a Throwable, without logging it. Only a
+     * RouterException's message is shown; anything else says "Internal
+     * Server Error" so internals don't leak. A 405 also gets the Allow header.
      *
-     * @param int $code HTTP status code
-     * @return string Status text
+     * @param array $args Additional details, shown under "details"
      */
-    private static function getStatusText(int $code): string
+    public static function render(\Throwable $e, int $errorCode = 500, array $args = []): ResponseInterface
     {
-        // Map of HTTP status codes to their text representation
-        return HttpStatusCodes::HTTP_STATUS_CODES[$code] ?? 'Error';
+        $payload = [
+            'error'   => HttpStatusCodes::HTTP_STATUS_CODES[$errorCode] ?? 'Error',
+            'message' => $e instanceof RouterException ? $e->getMessage() : 'Internal Server Error',
+            'status'  => $errorCode,
+        ];
+        if ($args !== []) {
+            $payload['details'] = $args;
+        }
+
+        // The message can echo the request path, which may not be valid UTF-8
+        $response = (new Response())->json($payload, $errorCode, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($errorCode === 405 && isset($args['available_methods'])) {
+            $response = $response->withHeader('Allow', implode(', ', $args['available_methods']));
+        }
+        return $response;
     }
 }

@@ -301,11 +301,12 @@ Router::Post("/users", function (Request $request, Response $response) {
 
 ## Response Helpers
 
-All response helpers return a new immutable Response instance:
+All response helpers return a new immutable Response instance, replacing any body and `Content-Type` it had:
 
 ```php
-// JSON response
+// JSON response (throws JsonException if the data can't be encoded)
 $response->json(['key' => 'value'], 200);
+$response->json(['url' => '/a/b'], 200, JSON_UNESCAPED_SLASHES); // optional json_encode() flags
 
 // Plain text
 $response->text('Hello World', 200);
@@ -334,6 +335,8 @@ Routing errors return structured JSON. For `RouterException` errors (404, 405), 
     "status": 404
 }
 ```
+
+A 405 also lists the allowed methods, under `details.available_methods` and in the `Allow` header. 404s and 405s are the client's errors, so they aren't written to the error log; 500s are, with the real exception message.
 
 ---
 

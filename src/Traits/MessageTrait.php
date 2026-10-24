@@ -37,24 +37,13 @@ trait MessageTrait
 
     public function hasHeader(string $name): bool
     {
-        $key = strtolower($name);
-        foreach ($this->headers as $h => $_) {
-            if (strtolower($h) === $key) {
-                return true;
-            }
-        }
-        return false;
+        return $this->headerKey($name) !== null;
     }
 
     public function getHeader(string $name): array
     {
-        $key = strtolower($name);
-        foreach ($this->headers as $h => $values) {
-            if (strtolower($h) === $key) {
-                return $values;
-            }
-        }
-        return [];
+        $key = $this->headerKey($name);
+        return $key === null ? [] : $this->headers[$key];
     }
 
     public function getHeaderLine(string $name): string
@@ -67,21 +56,55 @@ trait MessageTrait
         $values = is_array($value) ? array_values($value) : [(string)$value];
         $this->validateHeaderNameAndValue($name, $values);
         $clone = clone $this;
-        $clone->headers[$name] = $values;
+        $clone->putHeader($name, $values);
         return $clone;
     }
 
     public function withAddedHeader(string $name, $value): static
     {
-        $val = is_array($value) ? array_values($value) : [(string)$value];
-        $this->validateHeaderNameAndValue($name, $val);
+        $values = is_array($value) ? array_values($value) : [(string)$value];
+        $this->validateHeaderNameAndValue($name, $values);
         $clone = clone $this;
-        if (isset($clone->headers[$name])) {
-            $clone->headers[$name] = array_merge($clone->headers[$name], $val);
-        } else {
-            $clone->headers[$name] = $val;
-        }
+        $key = $clone->headerKey($name) ?? $name;
+        $clone->headers[$key] = array_merge($clone->headers[$key] ?? [], $values);
         return $clone;
+    }
+
+    /**
+     * Set a header on this instance, replacing it under any case. For use on
+     * clones; the values must already be valid.
+     *
+     * @param string[] $values
+     */
+    private function putHeader(string $name, array $values): void
+    {
+        $this->removeHeader($name);
+        $this->headers[$name] = $values;
+    }
+
+    private function removeHeader(string $name): void
+    {
+        $key = $this->headerKey($name);
+        if ($key !== null) {
+            unset($this->headers[$key]);
+        }
+    }
+
+    /**
+     * The key a header is stored under, matching the name case-insensitively
+     * as HTTP requires, or null if the message has no such header.
+     */
+    private function headerKey(string $name): ?string
+    {
+        if (isset($this->headers[$name])) {
+            return $name;
+        }
+        foreach ($this->headers as $key => $_) {
+            if (strcasecmp((string) $key, $name) === 0) {
+                return (string) $key;
+            }
+        }
+        return null;
     }
 
     /**
@@ -113,12 +136,7 @@ trait MessageTrait
     public function withoutHeader(string $name): static
     {
         $clone = clone $this;
-        foreach ($clone->headers as $h => $_) {
-            if (strtolower($h) === strtolower($name)) {
-                unset($clone->headers[$h]);
-                break;
-            }
-        }
+        $clone->removeHeader($name);
         return $clone;
     }
 

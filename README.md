@@ -102,6 +102,26 @@ Router::Delete("/users/{id}",[UserController::class, 'destroy']);
 
 A controller is created the first time one of its routes is dispatched, then reused for every later request in the same process. There's one instance per class, shared by all of that class's routes. Under PHP-FPM that means at most one per request, and only for the controller that's actually used. Under OpenSwoole each worker keeps one instance per class, so don't keep per-request state in controller properties.
 
+To build controllers some other way, such as from a dependency injection container, implement `ControllerResolverInterface` and register it:
+
+```php
+use Dromos\Routing\ControllerResolverInterface;
+
+final class ContainerControllerResolver implements ControllerResolverInterface
+{
+    public function __construct(private ContainerInterface $container) {}
+
+    public function resolve(string $class): object
+    {
+        return $this->container->get($class);
+    }
+}
+
+Router::setControllerResolver(new ContainerControllerResolver($container));
+```
+
+A handler must return a `ResponseInterface`. Anything else becomes a 500 error.
+
 ## Resource Routes
 
 Auto-register all HTTP methods for a controller:
@@ -492,11 +512,12 @@ $response = $router->handle(new Request());
 
 # Testing
 
-Run the test suite with:
+Run the test suite and static analysis with:
 
 ```bash
 composer install
 vendor/bin/phpunit
+vendor/bin/phpstan analyse
 ```
 
 For unit testing, use `Router::reset()` between tests to clear all registered routes and middleware:

@@ -20,3 +20,4 @@ jobs:
           coverage: none
       - run: composer install --no-interaction --no-progress
       - run: vendor/bin/phpunit
+      - run: vendor/bin/phpstan analyse --no-progress

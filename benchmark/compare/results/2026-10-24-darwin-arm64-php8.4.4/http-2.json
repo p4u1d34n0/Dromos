@@ -1,13 +1,13 @@
 {
     "script": "http",
-    "recorded_at": "2026-10-24T11:52:19+00:00",
+    "recorded_at": "2026-10-24T18:40:38+00:00",
     "environment": {
         "php": "8.4.4",
         "os": "Darwin 25.2.0 arm64",
         "cpu": "Apple M3 Pro, 11 cores",
         "jit": "disable",
         "xdebug": false,
-        "dromos": "d1c30f3",
+        "dromos": "62c95e3",
         "packages": {
             "flightphp/core": "v3.19.4",
             "illuminate/routing": "v12.70.1",
@@ -19,358 +19,218 @@
         }
     },
     "notes": {
-        "floor_us": 78,
+        "floor_us": 77,
         "opcache": true
     },
     "samples": {
         "20": {
             "static, last": {
                 "dromos": [
+                    131
+                ],
+                "flight": [
+                    204
+                ],
+                "laravel": [
+                    404
+                ],
+                "slim": [
+                    220
+                ],
+                "mezzio": [
+                    321
+                ],
+                "fastroute": [
+                    145
+                ],
+                "symfony": [
+                    174
+                ]
+            },
+            "param, last": {
+                "dromos": [
                     134
                 ],
                 "flight": [
-                    181
+                    190
                 ],
                 "laravel": [
-                    400
+                    421
                 ],
                 "slim": [
-                    210
+                    251
                 ],
                 "mezzio": [
-                    319
+                    389
+                ],
+                "fastroute": [
+                    166
+                ],
+                "symfony": [
+                    185
+                ]
+            },
+            "404": {
+                "dromos": [
+                    183
+                ],
+                "flight": [
+                    194
+                ],
+                "laravel": [
+                    395
+                ],
+                "slim": [
+                    220
+                ],
+                "mezzio": [
+                    353
                 ],
                 "fastroute": [
                     136
                 ],
                 "symfony": [
-                    166
+                    183
                 ]
             },
-            "param, last": {
+            "cached: static, last": {
                 "dromos": [
-                    131
+                    126
                 ],
                 "flight": [
-                    184
+                    183
                 ],
                 "laravel": [
-                    431
+                    265
+                ],
+                "slim": [
+                    204
+                ],
+                "mezzio": [
+                    264
+                ],
+                "fastroute": [
+                    124
+                ],
+                "symfony": [
+                    109
+                ]
+            },
+            "cached: param, last": {
+                "dromos": [
+                    129
+                ],
+                "flight": [
+                    192
+                ],
+                "laravel": [
+                    270
                 ],
                 "slim": [
                     213
                 ],
                 "mezzio": [
-                    371
-                ],
-                "fastroute": [
-                    138
-                ],
-                "symfony": [
-                    180
-                ]
-            },
-            "404": {
-                "dromos": [
-                    124
-                ],
-                "flight": [
-                    198
-                ],
-                "laravel": [
-                    420
-                ],
-                "slim": [
-                    221
-                ],
-                "mezzio": [
-                    367
-                ],
-                "fastroute": [
-                    151
-                ],
-                "symfony": [
-                    165
-                ]
-            },
-            "cached: static, last": {
-                "dromos": [
-                    152
-                ],
-                "flight": [
-                    185
-                ],
-                "laravel": [
-                    230
-                ],
-                "slim": [
-                    208
-                ],
-                "mezzio": [
                     295
                 ],
                 "fastroute": [
-                    107
+                    154
                 ],
                 "symfony": [
-                    108
-                ]
-            },
-            "cached: param, last": {
-                "dromos": [
-                    120
-                ],
-                "flight": [
-                    187
-                ],
-                "laravel": [
-                    235
-                ],
-                "slim": [
-                    193
-                ],
-                "mezzio": [
-                    291
-                ],
-                "fastroute": [
-                    106
-                ],
-                "symfony": [
-                    123
+                    129
                 ]
             },
             "cached: 404": {
                 "dromos": [
-                    125
+                    130
                 ],
                 "flight": [
-                    208
+                    202
                 ],
                 "laravel": [
-                    668
+                    712
                 ],
                 "slim": [
-                    296
+                    224
                 ],
                 "mezzio": [
-                    289
+                    292
                 ],
                 "fastroute": [
-                    104
+                    126
                 ],
                 "symfony": [
-                    109
+                    123
                 ]
             }
         },
         "200": {
             "static, last": {
                 "dromos": [
-                    248
+                    247
                 ],
                 "flight": [
-                    732
+                    751
                 ],
                 "laravel": [
-                    1472
+                    1406
                 ],
                 "slim": [
-                    928
+                    895
                 ],
                 "mezzio": [
-                    1127
+                    1116
                 ],
                 "fastroute": [
-                    701
+                    713
+                ],
+                "symfony": [
+                    854
+                ]
+            },
+            "param, last": {
+                "dromos": [
+                    229
+                ],
+                "flight": [
+                    759
+                ],
+                "laravel": [
+                    1463
+                ],
+                "slim": [
+                    898
+                ],
+                "mezzio": [
+                    1101
+                ],
+                "fastroute": [
+                    749
+                ],
+                "symfony": [
+                    848
+                ]
+            },
+            "404": {
+                "dromos": [
+                    231
+                ],
+                "flight": [
+                    926
+                ],
+                "laravel": [
+                    1697
+                ],
+                "slim": [
+                    910
+                ],
+                "mezzio": [
+                    1106
+                ],
+                "fastroute": [
+                    790
                 ],
                 "symfony": [
                     817
-                ]
-            },
-            "param, last": {
-                "dromos": [
-                    235
-                ],
-                "flight": [
-                    721
-                ],
-                "laravel": [
-                    1497
-                ],
-                "slim": [
-                    927
-                ],
-                "mezzio": [
-                    1119
-                ],
-                "fastroute": [
-                    692
-                ],
-                "symfony": [
-                    822
-                ]
-            },
-            "404": {
-                "dromos": [
-                    231
-                ],
-                "flight": [
-                    899
-                ],
-                "laravel": [
-                    1799
-                ],
-                "slim": [
-                    941
-                ],
-                "mezzio": [
-                    1185
-                ],
-                "fastroute": [
-                    725
-                ],
-                "symfony": [
-                    822
-                ]
-            },
-            "cached: static, last": {
-                "dromos": [
-                    121
-                ],
-                "flight": [
-                    722
-                ],
-                "laravel": [
-                    268
-                ],
-                "slim": [
-                    422
-                ],
-                "mezzio": [
-                    630
-                ],
-                "fastroute": [
-                    104
-                ],
-                "symfony": [
-                    108
-                ]
-            },
-            "cached: param, last": {
-                "dromos": [
-                    122
-                ],
-                "flight": [
-                    733
-                ],
-                "laravel": [
-                    231
-                ],
-                "slim": [
-                    398
-                ],
-                "mezzio": [
-                    631
-                ],
-                "fastroute": [
-                    115
-                ],
-                "symfony": [
-                    105
-                ]
-            },
-            "cached: 404": {
-                "dromos": [
-                    119
-                ],
-                "flight": [
-                    992
-                ],
-                "laravel": [
-                    4162
-                ],
-                "slim": [
-                    482
-                ],
-                "mezzio": [
-                    567
-                ],
-                "fastroute": [
-                    104
-                ],
-                "symfony": [
-                    112
-                ]
-            }
-        },
-        "2000": {
-            "static, last": {
-                "dromos": [
-                    1325
-                ],
-                "flight": [
-                    5121
-                ],
-                "laravel": [
-                    10888
-                ],
-                "slim": [
-                    32267.000000000004
-                ],
-                "mezzio": [
-                    33660
-                ],
-                "fastroute": [
-                    31829
-                ],
-                "symfony": [
-                    6044
-                ]
-            },
-            "param, last": {
-                "dromos": [
-                    1427
-                ],
-                "flight": [
-                    5229
-                ],
-                "laravel": [
-                    10921
-                ],
-                "slim": [
-                    33066
-                ],
-                "mezzio": [
-                    33582
-                ],
-                "fastroute": [
-                    31577
-                ],
-                "symfony": [
-                    5943
-                ]
-            },
-            "404": {
-                "dromos": [
-                    1286
-                ],
-                "flight": [
-                    6773
-                ],
-                "laravel": [
-                    12445
-                ],
-                "slim": [
-                    32354.999999999996
-                ],
-                "mezzio": [
-                    33602
-                ],
-                "fastroute": [
-                    32476
-                ],
-                "symfony": [
-                    6009
                 ]
             },
             "cached: static, last": {
@@ -378,68 +238,208 @@
                     132
                 ],
                 "flight": [
-                    5083
+                    765
                 ],
                 "laravel": [
-                    223
+                    253
                 ],
                 "slim": [
-                    1608
+                    420
+                ],
+                "mezzio": [
+                    591
+                ],
+                "fastroute": [
+                    114
+                ],
+                "symfony": [
+                    116
+                ]
+            },
+            "cached: param, last": {
+                "dromos": [
+                    124
+                ],
+                "flight": [
+                    756
+                ],
+                "laravel": [
+                    237
+                ],
+                "slim": [
+                    422
+                ],
+                "mezzio": [
+                    594
+                ],
+                "fastroute": [
+                    180
+                ],
+                "symfony": [
+                    114
+                ]
+            },
+            "cached: 404": {
+                "dromos": [
+                    117
+                ],
+                "flight": [
+                    925
+                ],
+                "laravel": [
+                    3941
+                ],
+                "slim": [
+                    436
+                ],
+                "mezzio": [
+                    609
+                ],
+                "fastroute": [
+                    117
+                ],
+                "symfony": [
+                    107
+                ]
+            }
+        },
+        "2000": {
+            "static, last": {
+                "dromos": [
+                    1265
+                ],
+                "flight": [
+                    5263
+                ],
+                "laravel": [
+                    11992
+                ],
+                "slim": [
+                    31988
+                ],
+                "mezzio": [
+                    34053
+                ],
+                "fastroute": [
+                    31822
+                ],
+                "symfony": [
+                    5926
+                ]
+            },
+            "param, last": {
+                "dromos": [
+                    1275
+                ],
+                "flight": [
+                    5232
+                ],
+                "laravel": [
+                    11419
+                ],
+                "slim": [
+                    31742
+                ],
+                "mezzio": [
+                    33989
+                ],
+                "fastroute": [
+                    31180
+                ],
+                "symfony": [
+                    5903
+                ]
+            },
+            "404": {
+                "dromos": [
+                    1266
+                ],
+                "flight": [
+                    6905
+                ],
+                "laravel": [
+                    13054
+                ],
+                "slim": [
+                    32292
+                ],
+                "mezzio": [
+                    34001
+                ],
+                "fastroute": [
+                    30834
+                ],
+                "symfony": [
+                    5945
+                ]
+            },
+            "cached: static, last": {
+                "dromos": [
+                    129
+                ],
+                "flight": [
+                    5150
+                ],
+                "laravel": [
+                    242
+                ],
+                "slim": [
+                    1603
+                ],
+                "mezzio": [
+                    3054
+                ],
+                "fastroute": [
+                    107
+                ],
+                "symfony": [
+                    111
+                ]
+            },
+            "cached: param, last": {
+                "dromos": [
+                    123
+                ],
+                "flight": [
+                    5498
+                ],
+                "laravel": [
+                    278
+                ],
+                "slim": [
+                    1651
+                ],
+                "mezzio": [
+                    3058
+                ],
+                "fastroute": [
+                    126
+                ],
+                "symfony": [
+                    111
+                ]
+            },
+            "cached: 404": {
+                "dromos": [
+                    118
+                ],
+                "flight": [
+                    7200
+                ],
+                "laravel": [
+                    35345
+                ],
+                "slim": [
+                    1665
                 ],
                 "mezzio": [
                     3016
                 ],
                 "fastroute": [
-                    120
+                    129
                 ],
                 "symfony": [
-                    118
-                ]
-            },
-            "cached: param, last": {
-                "dromos": [
-                    121
-                ],
-                "flight": [
-                    5025
-                ],
-                "laravel": [
-                    226
-                ],
-                "slim": [
-                    1632
-                ],
-                "mezzio": [
-                    3055
-                ],
-                "fastroute": [
-                    141
-                ],
-                "symfony": [
-                    119
-                ]
-            },
-            "cached: 404": {
-                "dromos": [
-                    126
-                ],
-                "flight": [
-                    6962
-                ],
-                "laravel": [
-                    34853
-                ],
-                "slim": [
-                    1656
-                ],
-                "mezzio": [
-                    2946
-                ],
-                "fastroute": [
-                    121
-                ],
-                "symfony": [
-                    127
+                    114
                 ]
             }
         }

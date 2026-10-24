@@ -1,13 +1,13 @@
 {
     "script": "footprint",
-    "recorded_at": "2026-10-24T12:02:01+00:00",
+    "recorded_at": "2026-10-24T19:05:36+00:00",
     "environment": {
         "php": "8.4.4",
         "os": "Darwin 25.2.0 arm64",
         "cpu": "Apple M3 Pro, 11 cores",
         "jit": "disable",
         "xdebug": false,
-        "dromos": "d1c30f3",
+        "dromos": "62c95e3",
         "packages": {
             "flightphp/core": "v3.19.4",
             "illuminate/routing": "v12.70.1",
@@ -25,38 +25,38 @@
     "footprint": {
         "dromos": {
             "files": 20,
-            "lines": 1909,
-            "memory": 563360
+            "lines": 1931,
+            "memory": 568240
         },
         "flight": {
             "files": 10,
             "lines": 4332,
-            "memory": 926128
+            "memory": 927968
         },
         "laravel": {
             "files": 75,
             "lines": 26248,
-            "memory": 4223288
+            "memory": 4225032
         },
         "slim": {
             "files": 68,
             "lines": 8286,
-            "memory": 1239160
+            "memory": 1240904
         },
         "mezzio": {
             "files": 103,
             "lines": 19198,
-            "memory": 2967616
+            "memory": 2969168
         },
         "fastroute": {
             "files": 10,
             "lines": 723,
-            "memory": 352976
+            "memory": 354720
         },
         "symfony": {
             "files": 10,
             "lines": 2042,
-            "memory": 804848
+            "memory": 806656
         }
     }
 }

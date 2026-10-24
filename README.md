@@ -443,6 +443,8 @@ $dbHost = EnvLoader::get('DB_HOST', 'localhost');
 
 Loads `.env` files into `$_ENV` and `putenv()`. Skips comments (`#`) and malformed lines. Falsy values like `"0"` are correctly preserved.
 
+Each file is loaded once per process: calling `load()` again with the same file does nothing, while a different file (say `.env.local`) still loads. Under OpenSwoole or RoadRunner, call it once at bootstrap, before the server starts. `$_ENV` and `putenv()` are shared by every request a worker handles, so read values into your configuration there rather than per request.
+
 ---
 
 # Route Caching

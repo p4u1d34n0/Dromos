@@ -4,7 +4,7 @@ namespace Dromos;
 
 use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\Stream;
-use Dromos\HTTP\Response;
+use Dromos\Http\Response;
 
 use Dromos\Enums\HttpStatusCodes;
 

@@ -3,7 +3,7 @@
 # Example with default request handling:
 
 ```php
-$request = new Dromos\HTTP\Request();
+$request = new Dromos\Http\Request();
 echo $request->getQueryParam('name');
 ```
 
@@ -14,6 +14,6 @@ $customParams = [
     'body' => ['email' => 'deano@example.com'],
     'files' => []
 ];
-$request = new Dromos\HTTP\Request($customParams);
+$request = new Dromos\Http\Request($customParams);
 echo $request->getQueryParam('name'); // Outputs 'Deano'
 ```

@@ -7,7 +7,7 @@
 ## Key Features
 
 * **PSR-7 / PSR-15 Inspired** — Native HTTP message and middleware implementations with PSR-compatible APIs. No external libraries required.
-* **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus combined regexes, so lookups stay fast as the route table grows.
+* **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus regexes grouped by path prefix, so lookups take the same time with 20 routes or 2,000.
 * **Route Groups** — Group routes under a shared prefix with per-group middleware.
 * **Route Caching** — Store the compiled route table in an opcache-friendly PHP file that refreshes itself when routes change.
 * **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
@@ -18,7 +18,8 @@
 
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
 
-- **Lean Footprint** — Core library < 100 KB.
+- **Fast** — Faster than Flight and Laravel's router in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM. With `Router::loadRoutes()`, a PHP-FPM request costs about 5 µs of routing work at any size. See the [router comparison](benchmark/compare/README.md).
+- **Lean Footprint** — No dependencies. A request loads 20 small files (about 1,900 lines).
 - **High Concurrency** — Custom emitters + OpenSwoole handle 10k+ req/s.
 - **Zero War Story** — No imposed folder structure. Organise your code your way.
 
@@ -516,7 +517,7 @@ opcache.preload_user=www-data
 
 Restart PHP-FPM after upgrading Dromos. If your app already has a preload script, `require` this one from it.
 
-**Security:** cache files are run with `require`. Keep it in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
+**Security:** cache files are run with `require`. Keep them in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
 
 **Upgrading from 1.1:** the old JSON cache file is replaced automatically. In 1.1, routes in the cache file could be dispatched without being registered. That skipped their middleware and kept deleted routes alive. This still works in 1.2 but triggers an `E_USER_DEPRECATED` notice, and it stops working in 2.0. Register your routes on every request.
 

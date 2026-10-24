@@ -23,3 +23,18 @@ jobs:
       - name: phpunit with opcache (exercises the route cache's opcache path)
         run: php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 vendor/bin/phpunit
       - run: vendor/bin/phpstan analyse --no-progress
+
+  router-comparison:
+    # A quick run of the head-to-head benchmark: every router must return the
+    # expected status and body for every request before it's timed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+        working-directory: benchmark/compare
+      - run: php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 inprocess.php --budget=0.01
+        working-directory: benchmark/compare

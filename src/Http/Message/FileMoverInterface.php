@@ -3,6 +3,7 @@
 namespace Dromos\Http\Message;
 
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 
 /**

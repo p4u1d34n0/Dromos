@@ -23,7 +23,7 @@ declare(strict_types=1);
     $vendor = is_dir(__DIR__ . '/../../psr/http-message') ? __DIR__ . '/../../' : __DIR__ . '/vendor/';
     $directories = [
         'Dromos\\'            => [$src],
-        'Psr\\Http\\Message\\' => [$vendor . 'psr/http-message/src/'],
+        'Psr\\Http\\Message\\' => [$vendor . 'psr/http-message/src/', $vendor . 'psr/http-factory/src/'],
         'Psr\\Http\\Server\\'  => [$vendor . 'psr/http-server-handler/src/', $vendor . 'psr/http-server-middleware/src/'],
     ];
 

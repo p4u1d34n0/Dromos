@@ -6,7 +6,6 @@ namespace Dromos\Tests\Http;
 
 use Dromos\Http\Message\FileMoverInterface;
 use Dromos\Http\Message\Stream;
-use Dromos\Http\Message\StreamInterface;
 use Dromos\Http\Message\UploadedFile;
 use Dromos\Tests\Support\TemporaryDirectory;
 use InvalidArgumentException;
@@ -14,6 +13,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 
 #[CoversClass(UploadedFile::class)]

@@ -37,9 +37,7 @@ class Response implements ResponseInterface
     public function __clone()
     {
         if ($this->body instanceof Stream) {
-            $position = $this->body->tell();
-            $this->body = new Stream((string) $this->body);
-            $this->body->seek($position);
+            $this->body = clone $this->body; // content and position; PHP copies the string only if it changes
         }
     }
 

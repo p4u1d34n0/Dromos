@@ -32,9 +32,6 @@ class Router implements RequestHandlerInterface
     /** @var array<string, array<string, Closure|array{0:class-string,1:string}>> Handlers keyed by method, then route URL */
     protected static array $routes = [];
 
-    /** @var array<int, array{0:string,1:string}> [controller class, missing method] */
-    private static array $missingRoutes = [];
-
     /** @var MiddlewareInterface[] */
     private array $middlewareStack = [];
 
@@ -74,7 +71,6 @@ class Router implements RequestHandlerInterface
     public static function reset(): void
     {
         self::$routes = [];
-        self::$missingRoutes = [];
         self::$routeMiddleware = [];
         self::disableCache();
         self::forgetMatchTable();
@@ -270,16 +266,11 @@ class Router implements RequestHandlerInterface
         if ($target instanceof Closure) {
             return $target;
         }
-        if (is_array($target) && count($target) === 2 && is_string($target[0])) {
-            // Controllers are created on first dispatch by the controller resolver, not here
-            [$class, $method] = $target;
-            if (!class_exists($class)) {
-                throw new \InvalidArgumentException("Route target class {$class} does not exist.");
-            }
-            if (!method_exists($class, $method)) {
-                self::$missingRoutes[] = [$class, $method];
-            }
-            return [$class, $method];
+        if (is_array($target) && count($target) === 2 && is_string($target[0]) && is_string($target[1])) {
+            // The controller class isn't loaded here: registering a route must not
+            // load every controller's file. The resolver loads and checks it when
+            // a request first reaches the route.
+            return [$target[0], $target[1]];
         }
         throw new \InvalidArgumentException("Invalid route target for URL.");
     }

@@ -6,6 +6,8 @@ namespace Dromos\Tests;
 
 use Dromos\Http\Response;
 use Dromos\Router;
+use Dromos\RouterException;
+use Dromos\RouterExceptionHandler;
 use Dromos\Tests\Support\RouterTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -68,11 +70,21 @@ final class RouterErrorResponsesTest extends RouterTestCase
     }
 
     #[Test]
-    public function test_a_404_for_a_path_that_is_not_utf8_still_has_a_json_body(): void
+    public function test_a_404_names_a_path_that_is_not_utf8_percent_encoded(): void
     {
         $response = $this->response('GET', "/caf\xE9");
 
         $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame('Route not found: /caf%E9', $this->decode($response)['message']);
+    }
+
+    #[Test]
+    public function test_an_error_message_that_is_not_utf8_still_gives_a_json_body(): void
+    {
+        $error = RouterException::routeNotFound("/caf\xE9");
+
+        $response = RouterExceptionHandler::render($error, 404);
+
         $this->assertSame("Route not found: /caf\u{FFFD}", $this->decode($response)['message']);
     }
 }

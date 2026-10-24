@@ -52,8 +52,7 @@ trait MessageTrait
 
     public function withHeader(string $name, $value): static
     {
-        $values = is_array($value) ? array_values($value) : [(string)$value];
-        $this->validateHeaderNameAndValue($name, $values);
+        $values = self::headerValues($name, $value);
         $clone = clone $this;
         $clone->putHeader($name, $values);
         return $clone;
@@ -61,8 +60,7 @@ trait MessageTrait
 
     public function withAddedHeader(string $name, $value): static
     {
-        $values = is_array($value) ? array_values($value) : [(string)$value];
-        $this->validateHeaderNameAndValue($name, $values);
+        $values = self::headerValues($name, $value);
         $clone = clone $this;
         $key = $clone->headerKey($name) ?? $name;
         $clone->headers[$key] = array_merge($clone->headers[$key] ?? [], $values);
@@ -109,29 +107,34 @@ trait MessageTrait
     }
 
     /**
-     * Validate that a header name contains only RFC 7230 token characters
-     * and that values do not contain CR or LF characters (prevents HTTP
-     * Response Splitting / header injection).
+     * A header's values as strings, after checking the name is an RFC 7230
+     * token and each value is a string or number holding only field-value
+     * characters: no CR, LF or other control characters, which would allow
+     * header injection.
      *
-     * @param string   $name   Header name
-     * @param string[] $values Header values
-     *
+     * @return list<string>
      * @throws \InvalidArgumentException
      */
-    private function validateHeaderNameAndValue(string $name, array $values): void
+    private static function headerValues(string $name, mixed $value): array
     {
-        if (preg_match('/[^a-zA-Z0-9\-\_\.\~\!\#\$\&\'\*\+\^`\|]/', $name)) {
-            throw new \InvalidArgumentException(
-                sprintf('Invalid header name: %s', $name)
-            );
+        if (!preg_match('/^[a-zA-Z0-9\'`#$%&*+.^_|~!-]+$/D', $name)) {
+            throw new \InvalidArgumentException(sprintf('Invalid header name: "%s"', $name));
         }
-        foreach ($values as $value) {
-            if (preg_match("/[\r\n]/", (string) $value)) {
-                throw new \InvalidArgumentException(
-                    sprintf('Header value must not contain CR or LF characters: %s', $name)
-                );
+        $values = is_array($value) ? array_values($value) : [$value];
+        if ($values === []) {
+            throw new \InvalidArgumentException(sprintf('Header %s must have at least one value', $name));
+        }
+        foreach ($values as $i => $one) {
+            if (!is_string($one) && !is_int($one) && !is_float($one)) {
+                throw new \InvalidArgumentException(sprintf('Header %s values must be strings or numbers, got %s', $name, get_debug_type($one)));
             }
+            $one = (string) $one;
+            if (!preg_match('/^[\x20\x09\x21-\x7E\x80-\xFF]*$/D', $one)) {
+                throw new \InvalidArgumentException(sprintf('Header %s has a value with a CR, LF or other control character', $name));
+            }
+            $values[$i] = $one;
         }
+        return $values;
     }
 
     public function withoutHeader(string $name): static

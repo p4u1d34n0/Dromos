@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4f646626738643a86af38ca5af833086",
+    "content-hash": "81dd430de5d7ab71f4bc9dc5f53ab68d",
     "packages": [
         {
             "name": "psr/http-message",
@@ -486,6 +486,62 @@
                 "source": "https://github.com/phar-io/version/tree/3.2.1"
             },
             "time": "2022-02-21T01:04:05+00:00"
+        },
+        {
+            "name": "php-http/psr7-integration-tests",
+            "version": "1.5.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/psr7-integration-tests.git",
+                "reference": "f000450b778783d38d81da8854286aaff68dca16"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/psr7-integration-tests/zipball/f000450b778783d38d81da8854286aaff68dca16",
+                "reference": "f000450b778783d38d81da8854286aaff68dca16",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.3 || ^8.0",
+                "phpunit/phpunit": "^9.3 || ^10.0 || ^11.5 || ^12.4 || ^13.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "require-dev": {
+                "f3-factory/fatfree-psr7": "^2.0",
+                "guzzlehttp/psr7": "^1.7 || ^2.0",
+                "httpsoft/http-message": "^1.1",
+                "laminas/laminas-diactoros": "^2.1 || ^3.0",
+                "nyholm/psr7": "^1.0",
+                "ringcentral/psr7": "^1.2",
+                "slim/psr7": "^1.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Http\\Psr7Test\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Tobias Nyholm",
+                    "email": "tobias.nyholm@gmail.com"
+                }
+            ],
+            "description": "Test suite for PSR7",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "psr-7",
+                "test"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/psr7-integration-tests/issues",
+                "source": "https://github.com/php-http/psr7-integration-tests/tree/1.5.2"
+            },
+            "time": "2026-10-21T06:08:33+00:00"
         },
         {
             "name": "phpstan/phpstan",

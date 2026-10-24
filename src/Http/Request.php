@@ -51,12 +51,28 @@ class Request implements ServerRequestInterface
     public function __construct()
     {
         $this->method        = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $this->uri           = new Uri($_SERVER['REQUEST_URI'] ?? '/');
+        $this->uri           = Uri::fromServerParams($_SERVER);
         $this->serverParams  = $_SERVER;
         $this->cookieParams  = $_COOKIE;
         $this->queryParams   = $_GET;
-        $this->parsedBody    = $_POST;
+        $this->parsedBody    = self::isFormPost($_SERVER) ? $_POST : null;
         $this->uploadedFiles = $_FILES;
+    }
+
+    /**
+     * True for a POST whose body PHP parsed into $_POST: a form or multipart
+     * body. PSR-7 gives other requests a null parsed body (or, here, a
+     * decoded JSON body).
+     *
+     * @param array<string, mixed> $server
+     */
+    private static function isFormPost(array $server): bool
+    {
+        if (($server['REQUEST_METHOD'] ?? '') !== 'POST') {
+            return false;
+        }
+        $type = strtolower((string) ($server['CONTENT_TYPE'] ?? ''));
+        return str_starts_with($type, 'application/x-www-form-urlencoded') || str_starts_with($type, 'multipart/form-data');
     }
 
     /**
@@ -133,8 +149,14 @@ class Request implements ServerRequestInterface
     {
         return $this->method;
     }
+    /**
+     * @throws InvalidArgumentException If the method isn't an HTTP token, such as GET
+     */
     public function withMethod(string $method): static
     {
+        if (!preg_match('/^[a-zA-Z0-9\'`#$%&*+.^_|~!-]+$/D', $method)) {
+            throw new InvalidArgumentException(sprintf('Invalid HTTP method: "%s"', $method));
+        }
         $clone = clone $this;
         $clone->method = $method;
         return $clone;
@@ -209,8 +231,9 @@ class Request implements ServerRequestInterface
         if ($data !== null && !is_array($data) && !is_object($data)) {
             throw new InvalidArgumentException('The parsed body must be null, an array or an object, got ' . get_debug_type($data) . '.');
         }
-        $this->loadBody();
+        // The copy reads the body, if it's still to be read, so this request is unchanged
         $clone = clone $this;
+        $clone->loadBody();
         $clone->parsedBody = $data;
         return $clone;
     }
@@ -222,8 +245,8 @@ class Request implements ServerRequestInterface
     }
     public function withBody(StreamInterface $body): static
     {
-        $this->loadBody();
         $clone = clone $this;
+        $clone->loadBody();
         $clone->body = $body;
         return $clone;
     }

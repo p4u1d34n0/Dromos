@@ -6,7 +6,7 @@ namespace Dromos\Tests\Http;
 
 use Dromos\Http\Message\Stream;
 use Dromos\Http\Response;
-use Dromos\Tests\Support\ResourceStream;
+use Dromos\Http\Message\ResourceStream;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -204,7 +204,7 @@ final class ResponseTest extends TestCase
     #[Test]
     public function test_clones_share_a_stream_that_is_not_in_memory(): void
     {
-        $file = new ResourceStream('file contents');
+        $file = ResourceStream::fromString('file contents');
         $response = (new Response())->withBody($file);
 
         $this->assertSame($file, $response->withStatus(201)->getBody(), 'not copied into memory');

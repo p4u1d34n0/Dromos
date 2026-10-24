@@ -145,9 +145,11 @@ final class RouterMatchingTest extends RouterTestCase
     #[Test]
     public function test_a_path_equal_to_a_route_template_matches_that_route_without_parameters(): void
     {
-        Router::Get('/users/{id}', $this->label('user'));
+        $handler = $this->label('user');
+        Router::Get('/users/{id}', $handler);
 
-        $this->assertSame(['route' => 'user'], $this->body('GET', '/users/{id}'));
+        // Over HTTP the braces arrive percent-encoded, so only a raw path can equal the template
+        $this->assertSame([200, $handler, [], []], Router::match('GET', '/users/{id}'));
     }
 
     #[Test]

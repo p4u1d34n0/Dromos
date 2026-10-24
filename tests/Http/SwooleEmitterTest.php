@@ -7,7 +7,7 @@ namespace Dromos\Tests\Http;
 use Dromos\Http\Emitter\SwooleEmitter;
 use Dromos\Http\Message\Stream;
 use Dromos\Http\Response;
-use Dromos\Tests\Support\ResourceStream;
+use Dromos\Http\Message\ResourceStream;
 use OpenSwoole\Http\Response as SwooleResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -87,7 +87,7 @@ final class SwooleEmitterTest extends TestCase
     #[Test]
     public function test_it_sends_a_small_stream_with_one_end_call_from_the_start(): void
     {
-        $stream = new ResourceStream('{"id":7}');
+        $stream = ResourceStream::fromString('{"id":7}');
         $stream->read(3);
 
         $this->emit((new Response())->withBody($stream));
@@ -103,7 +103,7 @@ final class SwooleEmitterTest extends TestCase
         for ($i = 0; strlen($content) < 20_000; $i++) {
             $content .= "line $i\n"; // every chunk differs, so order matters
         }
-        $stream = new ResourceStream($content);
+        $stream = ResourceStream::fromString($content);
         $stream->read(100); // a body that was already partly read
 
         $this->emit((new Response())->withBody($stream));

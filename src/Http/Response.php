@@ -24,9 +24,12 @@ class Response implements ResponseInterface
     /** Empty means the standard phrase for the status code. */
     protected string $reasonPhrase = '';
 
+    /**
+     * @throws \InvalidArgumentException If the code is outside 100 to 599
+     */
     public function __construct(int $code = 200, string $reason = '')
     {
-        $this->statusCode   = $code;
+        $this->statusCode   = self::statusCode($code);
         $this->reasonPhrase = $reason;
     }
 
@@ -68,14 +71,24 @@ class Response implements ResponseInterface
         return $this->body ??= new Stream();
     }
 
+    private static function statusCode(int $code): int
+    {
+        return $code >= 100 && $code <= 599
+            ? $code
+            : throw new \InvalidArgumentException("Invalid HTTP status code $code: it must be from 100 to 599.");
+    }
+
     public function getStatusCode(): int
     {
         return $this->statusCode;
     }
+    /**
+     * @throws \InvalidArgumentException If the code is outside 100 to 599
+     */
     public function withStatus(int $code, string $reason = ''): static
     {
         $c = clone $this;
-        $c->statusCode = $code;
+        $c->statusCode = self::statusCode($code);
         $c->reasonPhrase = $reason;
         return $c;
     }
@@ -125,7 +138,7 @@ class Response implements ResponseInterface
     private function withPayload(int $status, string $contentType, string $content): static
     {
         $clone = clone $this;
-        $clone->statusCode = $status;
+        $clone->statusCode = self::statusCode($status);
         $clone->reasonPhrase = '';
         $clone->putHeader('Content-Type', [$contentType]);
         $clone->body = new Stream($content);

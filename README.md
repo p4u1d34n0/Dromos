@@ -87,7 +87,7 @@ Router::Get("/users/{id}", [UserController::class, 'show']); // matches everythi
 
 If `/users/{id}` were registered first, it would also match `/users/me`.
 
-Under the hood, the router builds a lookup table the first time it dispatches, and again whenever routes change. Exact paths are found with a single hash lookup. Parameterised routes are combined into a few large regexes, so the router doesn't test them one at a time. In a long-running server such as OpenSwoole, the table is built once and reused for every request.
+Under the hood, the router builds a lookup table the first time it dispatches, and again whenever routes change. Exact paths are found with a single hash lookup. Parameterised routes are grouped by the static segments before their first placeholder (`/users` for `/users/{id}`), and each group is combined into one regex, so a request only tests the few routes that could match its path. In a long-running server such as OpenSwoole, the table is built once and reused for every request.
 
 ## Using Controllers
 

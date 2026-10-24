@@ -48,11 +48,76 @@ final class CompiledRoutesTest extends TestCase
     #[Test]
     public function test_parameterised_routes_are_split_across_regexes(): void
     {
-        $urls = array_map(fn(int $i) => "/r$i/{id}", range(1, RouteCompiler::ROUTES_PER_REGEX * 2 + 1));
+        $urls = array_map(fn(int $i) => "/r/{id}/v$i", range(1, RouteCompiler::ROUTES_PER_REGEX * 2 + 1));
         $routes = $this->compile(['GET' => $urls]);
 
-        $this->assertCount(3, $routes->toArray()['GET']['regexes']);
-        $this->assertSame('/r101/{id}', $routes->match('GET', '/r101/x')?->url);
+        $this->assertCount(3, $routes->toArray()['GET']['prefixes']['/r']);
+        $this->assertSame('/r/{id}/v101', $routes->match('GET', '/r/x/v101')?->url);
+    }
+
+    #[Test]
+    public function test_regexes_are_grouped_by_prefix_and_include_shorter_prefixes(): void
+    {
+        $prefixes = $this->compile(['GET' => ['/{slug}/edit', '/users/{id}', '/users/{id}/posts/{post}', '/teams/{id}']])
+            ->toArray()['GET']['prefixes'];
+
+        $this->assertSame(['', '/users', '/teams'], array_keys($prefixes));
+        $this->assertSame(1, substr_count($prefixes['']['0'], '(*MARK'), 'the root group holds only root routes');
+        $this->assertSame(3, substr_count($prefixes['/users']['0'], '(*MARK'), 'its own two routes and the root route');
+        $this->assertSame(2, substr_count($prefixes['/teams']['0'], '(*MARK'));
+    }
+
+    #[Test]
+    public function test_a_route_with_a_shorter_prefix_still_wins_when_registered_first(): void
+    {
+        $first = $this->compile(['GET' => ['/{slug}/edit', '/users/{id}']]);
+        $this->assertSame('/{slug}/edit', $first->match('GET', '/users/edit')?->url);
+        $this->assertSame('/users/{id}', $first->match('GET', '/users/7')?->url);
+        $this->assertSame('/{slug}/edit', $first->match('GET', '/teams/edit')?->url, 'a path whose prefix has no group of its own');
+
+        $second = $this->compile(['GET' => ['/users/{id}', '/{slug}/edit']]);
+        $this->assertSame('/users/{id}', $second->match('GET', '/users/edit')?->url);
+    }
+
+    #[Test]
+    public function test_a_path_matches_through_its_longest_prefix_with_routes(): void
+    {
+        $routes = $this->compile(['GET' => ['/a/{x}', '/a/b/c/{y}']]);
+
+        $this->assertSame(['/a/{x}', ['x' => 'b']], [$routes->match('GET', '/a/b')?->url, $routes->match('GET', '/a/b')?->params]);
+        $this->assertSame('/a/b/c/{y}', $routes->match('GET', '/a/b/c/d')?->url);
+        $this->assertNull($routes->match('GET', '/a/b/c'), '"/a/b" has no group, so "/a" is used and does not match');
+        $this->assertNull($routes->match('GET', 'a/b'), 'a path without a leading slash');
+        $this->assertNull($routes->match('GET', ''));
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function prefixes(): array
+    {
+        return [
+            'one static segment' => ['/users/{id}', '/users'],
+            'several'            => ['/api/v1/users/{id}/posts', '/api/v1/users'],
+            'placeholder first'  => ['/{slug}', ''],
+            'mid-segment'        => ['/files/report.{ext}', '/files'],
+            'no leading slash'   => ['users/{id}', 'users'],
+            'no slash at all'    => ['{id}', ''],
+        ];
+    }
+
+    #[Test]
+    #[\PHPUnit\Framework\Attributes\DataProvider('prefixes')]
+    public function test_the_prefix_is_the_whole_segments_before_the_first_placeholder(string $url, string $prefix): void
+    {
+        $this->assertSame($prefix, RouteCompiler::prefixOf($url));
+    }
+
+    #[Test]
+    public function test_parent_of_drops_the_last_segment(): void
+    {
+        $this->assertSame('/a', RouteCompiler::parentOf('/a/b'));
+        $this->assertSame('', RouteCompiler::parentOf('/a'));
+        $this->assertSame('', RouteCompiler::parentOf(''));
+        $this->assertSame('/a', RouteCompiler::parentOf('/a/'));
     }
 
     #[Test]

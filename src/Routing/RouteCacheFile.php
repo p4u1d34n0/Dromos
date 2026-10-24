@@ -23,7 +23,7 @@ use Throwable;
 final class RouteCacheFile
 {
     /** Bump when the stored format changes, so older files are rebuilt. */
-    private const FORMAT_VERSION = 1;
+    private const FORMAT_VERSION = 2;
 
     public function __construct(private readonly string $path)
     {
@@ -79,7 +79,7 @@ final class RouteCacheFile
             return null;
         }
 
-        /** @var array{signature: string, table: array<string, array{exact: array<string, int>, regexes: string[], parameterised: array<int, array{0:string,1:string[],2:int}>}>, handlers: array<string, array<string, array{0:class-string,1:string}>>} $data */
+        /** @var array{signature: string, table: array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}>, handlers: array<string, array<string, array{0:class-string,1:string}>>} $data */
         return new CachedRoutes($data['signature'], CompiledRoutes::fromArray($data['table']), $data['handlers']);
     }
 

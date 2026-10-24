@@ -78,7 +78,9 @@ trait MessageTrait
      */
     private function putHeader(string $name, array $values): void
     {
-        $this->removeHeader($name);
+        if ($this->headers !== []) {
+            $this->removeHeader($name);
+        }
         $this->headers[$name] = $values;
     }
 

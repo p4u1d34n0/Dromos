@@ -93,6 +93,27 @@ final class ResponseTest extends TestCase
     }
 
     #[Test]
+    public function test_a_new_response_keeps_what_is_written_to_its_body(): void
+    {
+        $response = new Response();
+        $response->getBody()->write('abc');
+
+        $this->assertSame('abc', (string) $response->getBody());
+        $this->assertSame($response->getBody(), $response->getBody(), 'the same stream every time');
+    }
+
+    #[Test]
+    public function test_a_clone_made_before_the_body_is_used_gets_its_own_body(): void
+    {
+        $original = new Response();
+        $clone = $original->withStatus(201);
+        $clone->getBody()->write('clone');
+
+        $this->assertSame('', (string) $original->getBody());
+        $this->assertSame('clone', (string) $clone->getBody());
+    }
+
+    #[Test]
     public function test_with_status_copies_the_body_so_clones_stay_independent(): void
     {
         $original = new Response();

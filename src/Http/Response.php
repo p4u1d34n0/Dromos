@@ -5,6 +5,7 @@ namespace Dromos\Http;
 use Dromos\Enums\HttpStatusCodes;
 use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\Stream;
+use Dromos\Http\Message\StreamInterface;
 use Dromos\Traits\MessageTrait;
 
 /**
@@ -26,7 +27,6 @@ class Response implements ResponseInterface
     {
         $this->statusCode   = $code;
         $this->reasonPhrase = $reason;
-        $this->body         = new Stream();
     }
 
     /**
@@ -36,9 +36,18 @@ class Response implements ResponseInterface
      */
     public function __clone()
     {
-        if ($this->body instanceof Stream) {
+        if (isset($this->body) && $this->body instanceof Stream) {
             $this->body = clone $this->body; // content and position; PHP copies the string only if it changes
         }
+    }
+
+    /**
+     * The body. An empty stream is created the first time it's asked for, so
+     * a response whose body is replaced (e.g. by json()) never builds one.
+     */
+    public function getBody(): StreamInterface
+    {
+        return $this->body ??= new Stream();
     }
 
     public function getStatusCode(): int

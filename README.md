@@ -262,7 +262,32 @@ $router->addMiddleware($rateLimiter);
 
 Adds `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers to all responses. Returns 429 with `Retry-After` header when exceeded.
 
-**Important:** Uses in-memory per-IP tracking. This is only effective in long-running processes (OpenSwoole, ReactPHP). In standard PHP-FPM deployments, each request runs in isolated memory and counters are never shared. For FPM, implement your own middleware backed by Redis or similar.
+Counters are kept in a `RateLimitStore`. By default every `RateLimitMiddleware` shares one in-memory store, which only works in long-running processes (OpenSwoole, RoadRunner, ReactPHP). It tracks up to 10,000 client IPs and drops the oldest window beyond that. In tests, `RateLimitMiddleware::resetStore()` clears it.
+
+**PHP-FPM:** each request has its own memory, so in-memory counters are never shared. Pass a store backed by shared storage instead. `RateLimitStore` has one method; this one uses APCu:
+
+```php
+use Dromos\Middleware\RateLimitEntry;
+use Dromos\Middleware\RateLimitStore;
+
+final class ApcuRateLimitStore implements RateLimitStore
+{
+    public function increment(string $key, int $windowSeconds): RateLimitEntry
+    {
+        $now = time();
+        $window = intdiv($now, $windowSeconds) * $windowSeconds;
+        $name = "ratelimit:$key:$window";
+
+        // apcu_add only succeeds for the first request in a window; apcu_inc is atomic
+        apcu_add($name, 0, $windowSeconds);
+        return new RateLimitEntry((int) apcu_inc($name), $window);
+    }
+}
+
+$router->addMiddleware(new RateLimitMiddleware(100, 60, new ApcuRateLimitStore()));
+```
+
+A Redis store works the same way with `INCR` and `EXPIRE`. APCu is shared between the workers of one PHP-FPM pool; use Redis to share limits between servers.
 
 ### Custom Middleware
 

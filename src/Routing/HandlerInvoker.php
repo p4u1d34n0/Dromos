@@ -43,7 +43,7 @@ final class HandlerInvoker
     /** @var WeakMap<Closure, list<array{0:int,1:string,2:ReflectionParameter}>> Entries go when their closure is freed */
     private WeakMap $closurePlans;
 
-    /** @var array<string, list<array{0:int,1:string,2:ReflectionParameter}>> Keyed by "Class::method" */
+    /** @var array<string, array<string, list<array{0:int,1:string,2:ReflectionParameter}>>> Keyed by class, then method */
     private array $methodPlans = [];
 
     public function __construct(private readonly ControllerResolverInterface $controllers)
@@ -108,7 +108,7 @@ final class HandlerInvoker
     /** @return list<array{0:int,1:string,2:ReflectionParameter}> */
     private function methodPlan(object $controller, string $method): array
     {
-        return $this->methodPlans[$controller::class . '::' . $method]
+        return $this->methodPlans[$controller::class][$method]
             ??= $this->buildPlan(new ReflectionMethod($controller, $method));
     }
 

@@ -21,12 +21,12 @@ namespace Dromos\Routing;
 final class CompiledRoutes
 {
     /**
-     * Per method and path, the earliest parameterised route that also matches
-     * an exact route's path (or false). Filled in on first lookup.
+     * Per method and path, the match for a path that is an exact route's URL.
+     * It never changes, so it's worked out on first lookup and reused.
      *
-     * @var array<string, array<string, array{0:string,1:array<string,string>,2:int}|false>>
+     * @var array<string, array<string, RouteMatch>>
      */
-    private array $shadowedBy = [];
+    private array $exactMatches = [];
 
     /**
      * @param array<string, MethodTable> $table Per method: exact URLs, prefix groups
@@ -71,16 +71,25 @@ final class CompiledRoutes
     {
         $position = $this->table[$method]['exact'][$path] ?? null;
         if ($position !== null) {
-            // A parameterised route registered earlier that also matches this path wins
-            $earlier = $this->shadowedBy[$method][$path] ??= $this->matchParameterised($method, $path) ?? false;
-            if ($earlier === false || $earlier[2] >= $position) {
-                return new RouteMatch($path);
-            }
-            return new RouteMatch($earlier[0], $earlier[1]);
+            return $this->exactMatches[$method][$path] ??= $this->exactMatch($method, $path, $position);
         }
 
         $match = $this->matchParameterised($method, $path);
         return $match === null ? null : new RouteMatch($match[0], $match[1]);
+    }
+
+    /**
+     * The match for a path that is the URL of the exact route at $position:
+     * that route, unless a parameterised route registered earlier also
+     * matches the path, in which case the earlier route wins.
+     */
+    private function exactMatch(string $method, string $path, int $position): RouteMatch
+    {
+        $earlier = $this->matchParameterised($method, $path);
+        if ($earlier === null || $earlier[2] >= $position) {
+            return new RouteMatch($path);
+        }
+        return new RouteMatch($earlier[0], $earlier[1]);
     }
 
     /**
@@ -106,8 +115,9 @@ final class CompiledRoutes
     {
         $prefixes = $this->table[$method]['prefixes'] ?? [];
 
-        // The longest prefix of the path that has routes holds every route that can match it
-        for ($prefix = $path; !isset($prefixes[$prefix]); $prefix = RouteCompiler::parentOf($prefix)) {
+        // The longest prefix of the path that has routes holds every route that can match it.
+        // The loop is RouteCompiler::parentOf() inlined: this runs on every request
+        for ($prefix = $path; !isset($prefixes[$prefix]); $prefix = substr($prefix, 0, (int) strrpos($prefix, '/'))) {
             if ($prefix === '') {
                 return null;
             }

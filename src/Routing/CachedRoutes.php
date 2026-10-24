@@ -55,11 +55,13 @@ final readonly class CachedRoutes
      */
     public static function signatureOfFile(string $file): ?string
     {
-        $stat = @stat($file);
-        if ($stat === false) {
+        // One stat() call: fileinode() and filesize() reuse what filemtime() read.
+        // Runs on every cached request, so it builds no stat() array and no hash
+        $mtime = @filemtime($file);
+        if ($mtime === false) {
             return null;
         }
-        return 'file:' . hash('xxh128', $file . "\0" . $stat['ino'] . "\0" . $stat['size'] . "\0" . $stat['mtime']);
+        return 'file:' . $file . "\0" . fileinode($file) . "\0" . filesize($file) . "\0" . $mtime;
     }
 
     /**

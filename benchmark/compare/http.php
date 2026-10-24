@@ -8,15 +8,18 @@ declare(strict_types=1);
  * this counts loading each router's files, building its request and sending
  * its response. Requests are sent one at a time with ab (ApacheBench).
  *
- * Usage: php benchmark/compare/http.php [--routers=dromos,flight] [--sizes=5,50,500] [--requests=3000]
+ * Usage: php benchmark/compare/http.php [--routers=dromos,flight] [--sizes=5,50,500] [--requests=3000] [--json=file]
+ *
+ * --json writes every sample and the environment, for run.php and report.php.
  */
 
 use Bench\Contenders;
+use Bench\Results;
 use Bench\RouteSet;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$options = getopt('', ['routers::', 'sizes::', 'requests::']);
+$options = getopt('', ['routers::', 'sizes::', 'requests::', 'json::']);
 $routers = explode(',', $options['routers'] ?? implode(',', array_keys(Contenders::ALL)));
 $sizes = array_map('intval', explode(',', $options['sizes'] ?? '5,50,500'));
 $requests = (int) ($options['requests'] ?? 3000);
@@ -75,7 +78,9 @@ $baseline = ab($port, 'GET', '/', $requests);
 proc_terminate($server);
 proc_close($server);
 
-$results = [];
+$results = new Results('http');
+$results->note('floor_us', $baseline);
+$results->note('opcache', true); // start_server() turns it on
 foreach ($sizes as $resources) {
     $routes = new RouteSet($resources);
     foreach ($routers as $name) {
@@ -95,7 +100,7 @@ foreach ($sizes as $resources) {
                 }
                 foreach (['static, last', 'param, last', '404'] as $label) {
                     [$method, $path] = $routes->requests()[$label];
-                    $results[$routes->count()][($cached ? 'cached: ' : '') . $label][$name] = ab($port, $method, $path, $requests);
+                    $results->add($routes->count(), ($cached ? 'cached: ' : '') . $label, $name, ab($port, $method, $path, $requests));
                 }
             } finally {
                 proc_terminate($server);
@@ -106,21 +111,10 @@ foreach ($sizes as $resources) {
 }
 shell_exec('rm -rf ' . escapeshellarg($cacheRoot));
 
+if (isset($options['json'])) {
+    $results->save($options['json']);
+}
+
 printf("PHP %s built-in server, opcache on, µs per request (lower is better); fastest in each row marked *\n", PHP_VERSION);
 printf("A script that only echoes the JSON takes %.0f µs: the server and ab's share of every number below.\n\n", $baseline);
-foreach ($results as $count => $rows) {
-    printf("%d routes\n%-24s", $count, '');
-    foreach ($routers as $name) {
-        printf('%12s', $name);
-    }
-    echo "\n";
-    foreach ($rows as $label => $times) {
-        printf('%-24s', $label);
-        $best = min($times);
-        foreach ($routers as $name) {
-            printf('%11.0f%s', $times[$name], $times[$name] === $best ? '*' : ' ');
-        }
-        echo "\n";
-    }
-    echo "\n";
-}
+echo $results->table($routers, 0);

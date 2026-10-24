@@ -36,5 +36,12 @@ jobs:
           coverage: none
       - run: composer install --no-interaction --no-progress
         working-directory: benchmark/compare
-      - run: php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 inprocess.php --budget=0.01
+      # One quick in-process run plus the footprint, through the same dataset
+      # pipeline as a full run (no HTTP: the runner has no ab, and shared
+      # runners are too noisy for those numbers to mean much)
+      - run: php run.php --runs=1 --http-runs=0 --budget=0.01 --out="$RUNNER_TEMP/results" && php report.php "$RUNNER_TEMP/results"
         working-directory: benchmark/compare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-comparison-results
+          path: ${{ runner.temp }}/results

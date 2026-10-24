@@ -2,6 +2,7 @@
 
 namespace Benchmark;
 
+use Dromos\Http\Emitter\SwooleEmitter;
 use Dromos\Router;
 use OpenSwoole\HTTP\Server;
 use OpenSwoole\HTTP\Request as SwooleRequest;

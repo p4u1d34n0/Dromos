@@ -13,6 +13,8 @@ use Dromos\Http\Message\Stream;
  */
 class Emitter implements EmitterInterface
 {
+    use ReadsBodyInChunks;
+
     /**
      * Whether headers have already been sent
      *
@@ -122,11 +124,8 @@ class Emitter implements EmitterInterface
             return;
         }
 
-        if ($body->isSeekable()) {
-            $body->rewind();
-        }
-        while (!$body->eof()) {
-            echo $body->read(8192);
+        foreach ($this->chunksOf($body) as $chunk) {
+            echo $chunk;
         }
     }
 

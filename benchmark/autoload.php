@@ -6,7 +6,8 @@
  *
  *   php benchmark/dispatch.php ../other-checkout/src
  *
- * Also maps the Dromos\Http namespace onto the src/HTTP/ directory.
+ * Releases before 1.2 kept the Dromos\Http classes in src/HTTP/, so that
+ * directory is tried too.
  */
 return static function (string $src): void {
     $src = rtrim($src, '/');

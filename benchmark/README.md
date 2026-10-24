@@ -179,14 +179,6 @@ environment:
   - SWOOLE_WORKERS=8
 ```
 
-## HTTP Directory Case Note
-
-Dromos uses `src/HTTP/` (uppercase) on disk but the PHP namespace is
-`Dromos\Http` (mixed case). The `bootstrap.php` autoloader handles this
-mismatch by falling back to an uppercase `HTTP/` directory lookup when the
-initial case-sensitive path is not found. This ensures the benchmark runs
-correctly on Linux's case-sensitive filesystem inside Docker.
-
 ## Router Dispatch Micro-benchmark
 
 `dispatch.php` measures the router on its own, in-process, with no HTTP server:

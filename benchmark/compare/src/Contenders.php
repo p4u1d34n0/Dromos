@@ -11,6 +11,8 @@ final class Contenders
         'dromos'    => Contenders\DromosContender::class,
         'flight'    => Contenders\FlightContender::class,
         'laravel'   => Contenders\LaravelContender::class,
+        'slim'      => Contenders\SlimContender::class,
+        'mezzio'    => Contenders\MezzioContender::class,
         'fastroute' => Contenders\FastRouteContender::class,
         'symfony'   => Contenders\SymfonyContender::class,
     ];

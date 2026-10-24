@@ -192,37 +192,44 @@ correctly on Linux's case-sensitive filesystem inside Docker.
 `dispatch.php` measures the router on its own, in-process, with no HTTP server:
 
 ```bash
-php -d opcache.enable_cli=1 benchmark/dispatch.php            # this checkout
-php -d opcache.enable_cli=1 benchmark/dispatch.php ../other/src  # another copy, to compare
+php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 benchmark/dispatch.php
+php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 benchmark/dispatch.php ../other/src  # compare another copy
 ```
 
 - **worker** registers routes once, then dispatches repeatedly, as OpenSwoole and RoadRunner do.
-- **fpm** registers every route and dispatches one request each time, as PHP-FPM does.
+- **fpm** registers every route and dispatches one request each time, as PHP-FPM does. It runs with and without the route cache.
 
-Each row creates a `Request`, dispatches it, and builds a JSON `Response`. Results are in µs per request (lower is better). These are the best of 3 runs on Apple Silicon with PHP 8.4 and opcache, comparing v1.1.0 against the compiled matcher:
+`opcache.file_update_protection=0` lets opcache cache the route cache file the moment it's written. By default opcache ignores files modified in the last 2 seconds, which only matters in a benchmark that writes the file and then reads it straight away.
 
-| Routes | Mode | Request | v1.1.0 | Compiled | Speed-up |
+Each row creates a `Request`, dispatches it, and builds a JSON `Response`. Results are in µs per request (lower is better). These are the best of 3 runs on Apple Silicon with PHP 8.4 and opcache, comparing v1.1.0 with 1.2:
+
+| Routes | Mode | Request | v1.1.0 | 1.2 | Speed-up |
 |---|---|---|---:|---:|---:|
-| 20 | worker | exact path, registered first | 2.6 | 2.8 | 0.9× |
-| 20 | worker | exact path, registered last | 9.9 | 2.9 | 3.4× |
-| 20 | worker | 1 parameter, registered last | 11.4 | 3.4 | 3.4× |
-| 20 | worker | 2 parameters, registered last | 12.4 | 3.8 | 3.3× |
-| 20 | worker | no match (404) | 24.0 | 12.8 | 1.9× |
-| 20 | fpm | register all + 1 parameter, last | 17.4 | 17.9 | 1.0× |
-| 200 | worker | exact path, registered first | 2.8 | 2.8 | 1.0× |
-| 200 | worker | exact path, registered last | 97.5 | 2.8 | 34.6× |
-| 200 | worker | 1 parameter, registered last | 95.8 | 3.6 | 26.2× |
-| 200 | worker | 2 parameters, registered last | 97.5 | 4.3 | 22.6× |
-| 200 | worker | no match (404) | 126.8 | 13.3 | 9.6× |
-| 200 | fpm | register all + 1 parameter, last | 151.7 | 148.4 | 1.0× |
-| 2,000 | worker | exact path, registered first | 2.7 | 2.8 | 1.0× |
-| 2,000 | worker | exact path, registered last | 953.5 | 2.9 | 332.2× |
-| 2,000 | worker | 1 parameter, registered last | 953.0 | 9.7 | 98.3× |
-| 2,000 | worker | 2 parameters, registered last | 975.9 | 10.4 | 93.7× |
-| 2,000 | worker | no match (404) | 1212.8 | 20.8 | 58.2× |
-| 2,000 | fpm | register all + 1 parameter, last | 1576.7 | 1450.3 | 1.1× |
+| 20 | worker | exact path, registered first | 2.4 | 2.3 | 1.0× |
+| 20 | worker | exact path, registered last | 8.8 | 2.4 | 3.7× |
+| 20 | worker | 1 parameter, registered last | 10.1 | 2.8 | 3.6× |
+| 20 | worker | 2 parameters, registered last | 11.2 | 3.0 | 3.8× |
+| 20 | worker | no match (404) | 21.4 | 11.1 | 1.9× |
+| 20 | fpm | register all + 1 parameter | 15.7 | 15.7 | 1.0× |
+| 20 | fpm | register all + 1 parameter, **route cache on** | 15.7 | 9.5 | 1.7× |
+| 200 | worker | exact path, registered first | 2.4 | 2.4 | 1.0× |
+| 200 | worker | exact path, registered last | 81.2 | 2.3 | 34.7× |
+| 200 | worker | 1 parameter, registered last | 82.1 | 3.0 | 27.1× |
+| 200 | worker | 2 parameters, registered last | 84.9 | 3.2 | 26.6× |
+| 200 | worker | no match (404) | 110.9 | 11.5 | 9.6× |
+| 200 | fpm | register all + 1 parameter | 133.1 | 116.5 | 1.1× |
+| 200 | fpm | register all + 1 parameter, **route cache on** | 133.1 | 49.8 | 2.7× |
+| 2,000 | worker | exact path, registered first | 2.4 | 2.4 | 1.0× |
+| 2,000 | worker | exact path, registered last | 839.5 | 2.3 | 358.7× |
+| 2,000 | worker | 1 parameter, registered last | 829.6 | 8.4 | 99.2× |
+| 2,000 | worker | 2 parameters, registered last | 848.5 | 8.5 | 100.3× |
+| 2,000 | worker | no match (404) | 1,029.7 | 17.6 | 58.4× |
+| 2,000 | fpm | register all + 1 parameter | 1,322.1 | 1,110.3 | 1.2× |
+| 2,000 | fpm | register all + 1 parameter, **route cache on** | 1,322.1 | 442.9 | 3.0× |
 
-v1.1.0 tested each route in turn, building that route's regex as it went, so the cost grew with the size of the route table. The compiled matcher's cost stays nearly flat. PHP-FPM runs barely change, because registering the routes on every request dominates there.
+v1.1.0 tested each route in turn, so the cost grew with the size of the route table. 1.2 compiles the routes into a hash map and combined regexes, so matching cost stays nearly flat.
+
+Under PHP-FPM, the route cache skips building the table. Most of the remaining time is registering the routes, which every request still does.
 
 ## Controller Construction Benchmark
 

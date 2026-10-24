@@ -42,6 +42,14 @@ class Router implements RequestHandlerInterface
     /** Compiled from the routes on first dispatch, dropped whenever they change. */
     private static ?CompiledRoutes $matchTable = null;
 
+    /**
+     * Controller routes read from the cache file when none are registered
+     * (deprecated, see matchTable()). Null when the registered routes are used.
+     *
+     * @var array<string, array<string, array{0:class-string,1:string}>>|null
+     */
+    private static ?array $routesFromCache = null;
+
     private static ?ControllerResolverInterface $controllerResolver = null;
 
     private static ?HandlerInvoker $invoker = null;
@@ -82,6 +90,7 @@ class Router implements RequestHandlerInterface
     protected static function forgetMatchTable(): void
     {
         self::$matchTable = null;
+        self::$routesFromCache = null;
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -155,21 +164,11 @@ class Router implements RequestHandlerInterface
 
     protected static function addRoute(string $method, string $url, $target): string
     {
-        $route = [
-            'method'  => strtoupper($method),
-            'path'    => $url,
-            'handler' => self::checkTarget($target),
-        ];
-
-        self::$routes[$method][$url] = $route['handler'];
+        self::$routes[$method][$url] = self::checkTarget($target);
         self::forgetMatchTable();
-
-        // Track the route for caching
-        self::trackRouteForCache($route);
 
         return self::class;
     }
-
 
     /** @return Closure|array */
     protected static function checkTarget($target)
@@ -251,19 +250,41 @@ class Router implements RequestHandlerInterface
     }
 
     /**
-     * The routes being dispatched: the cached routes when the route cache is
-     * enabled, otherwise the registered ones.
+     * The routes being dispatched: the registered routes, or in the deprecated
+     * cache-only mode, the controller routes read from the cache file.
      *
      * @return array<string, array<string, Closure|array{0:class-string,1:string}>>
      */
     private static function activeRoutes(): array
     {
-        return self::$useCache ? self::$compiledRoutes : self::$routes;
+        return self::$routesFromCache ?? self::$routes;
     }
 
     private static function matchTable(): CompiledRoutes
     {
-        return self::$matchTable ??= (new RouteCompiler())->compile(self::activeRoutes());
+        if (self::$matchTable !== null) {
+            return self::$matchTable;
+        }
+
+        $compiler = new RouteCompiler();
+        if (self::$routeCache === null) {
+            return self::$matchTable = $compiler->compile(self::$routes);
+        }
+
+        if (self::$routes === []) {
+            $cachedRoutes = self::cachedRoutes();
+            if ($cachedRoutes !== []) {
+                @trigger_error(
+                    'Dispatching routes from the route cache without registering them is deprecated since Dromos 1.2 '
+                    . 'and will stop working in 2.0. Register your routes on every request; the cache still skips compiling them.',
+                    E_USER_DEPRECATED
+                );
+                self::$routesFromCache = $cachedRoutes;
+                return self::$matchTable = $compiler->compile($cachedRoutes);
+            }
+        }
+
+        return self::$matchTable = self::$routeCache->remember(self::$routes, $compiler->compile(...));
     }
 
     private static function invoker(): HandlerInvoker

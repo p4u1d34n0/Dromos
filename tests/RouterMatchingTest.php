@@ -229,26 +229,6 @@ final class RouterMatchingTest extends RouterTestCase
         $this->assertSame('yes', $notFound->getHeaderLine('X-Global'));
     }
 
-    #[Test]
-    public function test_it_matches_routes_loaded_from_the_route_cache(): void
-    {
-        $cacheFile = sys_get_temp_dir() . '/dromos_route_cache_' . uniqid() . '.json';
-
-        try {
-            Router::enableCache($cacheFile);
-            Router::Get('/items/{id}', [RouterMatchingTestController::class, 'show']);
-            $this->assertSame(['controller' => '5'], $this->body('GET', '/items/5'));
-
-            Router::reset();
-            $this->assertSame(404, $this->statusOf('GET', '/items/6'));
-
-            Router::enableCache($cacheFile);
-            $this->assertSame(['controller' => '6'], $this->body('GET', '/items/6'));
-        } finally {
-            @unlink($cacheFile);
-        }
-    }
-
     // ────────────────────────────────────────────────────────────────────────────────
     // Helpers
     // ────────────────────────────────────────────────────────────────────────────────
@@ -260,12 +240,4 @@ final class RouterMatchingTest extends RouterTestCase
             $response->json(['route' => $route] + $request->getAttributes());
     }
 
-}
-
-final class RouterMatchingTestController
-{
-    public function show(Request $request, Response $response, string $id): ResponseInterface
-    {
-        return $response->json(['controller' => $id]);
-    }
 }

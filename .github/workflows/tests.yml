@@ -20,4 +20,6 @@ jobs:
           coverage: none
       - run: composer install --no-interaction --no-progress
       - run: vendor/bin/phpunit
+      - name: phpunit with opcache (exercises the route cache's opcache path)
+        run: php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 vendor/bin/phpunit
       - run: vendor/bin/phpstan analyse --no-progress

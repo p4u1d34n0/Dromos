@@ -9,8 +9,14 @@ namespace Dromos\Routing;
  *
  * Routes are tried in registration order and the first match wins: a route
  * matches when its URL equals the path, or when its {placeholders} match the
- * path's segments. The table holds route URLs only, so it can be exported
- * with toArray() and cached.
+ * path's segments. Each prefix group's regexes are built the first time a
+ * path needs them, so a request compiles only the routes it could match.
+ * toArray() builds every group and returns the table as plain data for
+ * caching; a table read back with fromArray() needs no building.
+ *
+ * @phpstan-type Parameterised array<int, array{0:string,1:string[],2:int}>
+ * @phpstan-type MethodTable array{exact: array<string, int>, prefixes: array<string, string[]|false>, parameterised: Parameterised, urls?: array<string, array<int, array{0:string,1:int}>>}
+ * @phpstan-type BuiltMethodTable array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: Parameterised}
  */
 final class CompiledRoutes
 {
@@ -23,14 +29,15 @@ final class CompiledRoutes
     private array $shadowedBy = [];
 
     /**
-     * @param array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
+     * @param array<string, MethodTable> $table Per method: exact URLs, prefix groups
+     *        (false until built), built routes' details, and the routes still to build
      */
-    private function __construct(private readonly array $table)
+    private function __construct(private array $table)
     {
     }
 
     /**
-     * @param array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
+     * @param array<string, MethodTable> $table
      */
     public static function fromArray(array $table): self
     {
@@ -38,13 +45,23 @@ final class CompiledRoutes
     }
 
     /**
-     * The table as plain arrays and strings, suitable for var_export().
+     * The table with every group built, as plain arrays and strings,
+     * suitable for var_export().
      *
-     * @return array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}>
+     * @return array<string, BuiltMethodTable>
      */
     public function toArray(): array
     {
-        return $this->table;
+        $built = [];
+        foreach ($this->table as $method => $table) {
+            foreach (array_keys($table['prefixes']) as $prefix) {
+                $this->group($method, (string) $prefix);
+            }
+            /** @var BuiltMethodTable $complete every group was built above */
+            $complete = array_diff_key($this->table[$method], ['urls' => true]);
+            $built[$method] = $complete;
+        }
+        return $built;
     }
 
     /**
@@ -52,21 +69,17 @@ final class CompiledRoutes
      */
     public function match(string $method, string $path): ?RouteMatch
     {
-        $table = $this->table[$method] ?? null;
-        if ($table === null) {
-            return null;
-        }
-
-        if (isset($table['exact'][$path])) {
+        $position = $this->table[$method]['exact'][$path] ?? null;
+        if ($position !== null) {
             // A parameterised route registered earlier that also matches this path wins
-            $earlier = $this->shadowedBy[$method][$path] ??= $this->matchParameterised($table, $path) ?? false;
-            if ($earlier === false || $earlier[2] >= $table['exact'][$path]) {
+            $earlier = $this->shadowedBy[$method][$path] ??= $this->matchParameterised($method, $path) ?? false;
+            if ($earlier === false || $earlier[2] >= $position) {
                 return new RouteMatch($path);
             }
             return new RouteMatch($earlier[0], $earlier[1]);
         }
 
-        $match = $this->matchParameterised($table, $path);
+        $match = $this->matchParameterised($method, $path);
         return $match === null ? null : new RouteMatch($match[0], $match[1]);
     }
 
@@ -87,24 +100,56 @@ final class CompiledRoutes
     }
 
     /**
-     * @param array{prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>} $table
      * @return array{0:string,1:array<string,string>,2:int}|null [route URL, params, position]
      */
-    private function matchParameterised(array $table, string $path): ?array
+    private function matchParameterised(string $method, string $path): ?array
     {
+        $prefixes = $this->table[$method]['prefixes'] ?? [];
+
         // The longest prefix of the path that has routes holds every route that can match it
-        for ($prefix = $path; !isset($table['prefixes'][$prefix]); $prefix = RouteCompiler::parentOf($prefix)) {
+        for ($prefix = $path; !isset($prefixes[$prefix]); $prefix = RouteCompiler::parentOf($prefix)) {
             if ($prefix === '') {
                 return null;
             }
         }
 
-        foreach ($table['prefixes'][$prefix] as $regex) {
+        foreach ($prefixes[$prefix] ?: $this->group($method, $prefix) as $regex) {
             if (preg_match($regex, $path, $m)) {
-                [$url, $names, $position] = $table['parameterised'][(int) $m['MARK']];
-                return [$url, array_combine($names, array_slice($m, 1, count($names))), $position];
+                [$url, $names, $position] = $this->table[$method]['parameterised'][(int) $m['MARK']];
+                $params = [];
+                foreach ($names as $i => $name) {
+                    $params[$name] = $m[$i + 1];
+                }
+                return [$url, $params, $position];
             }
         }
         return null;
+    }
+
+    /**
+     * The regexes of a prefix group, built now if they haven't been: its own
+     * routes and those of its shorter prefixes, in registration order.
+     *
+     * @return string[]
+     */
+    private function group(string $method, string $prefix): array
+    {
+        $table = &$this->table[$method];
+        if ($table['prefixes'][$prefix] !== false) {
+            return $table['prefixes'][$prefix];
+        }
+
+        $routes = [];
+        for ($shorter = $prefix; ; $shorter = RouteCompiler::parentOf($shorter)) {
+            $routes += $table['urls'][$shorter] ?? [];
+            if ($shorter === '') {
+                break;
+            }
+        }
+        ksort($routes);
+
+        [$regexes, $parameterised] = RouteCompiler::group($routes);
+        $table['parameterised'] += $parameterised;
+        return $table['prefixes'][$prefix] = $regexes;
     }
 }

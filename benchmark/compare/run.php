@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Collects a dataset: runs inprocess.php, http.php and footprint.php several
+ * Collects a dataset: runs inprocess.php, matchers.php, http.php and footprint.php several
  * times, each in a fresh process and one after another (never in parallel,
  * which skews every number), and saves every run's raw JSON in one
  * directory. report.php turns that directory into tables.
@@ -57,6 +57,13 @@ for ($i = 1; $i <= $runs; $i++) {
     echo "== in-process, run $i of $runs\n";
     run_script('inprocess.php', ['opcache.enable_cli=1', 'opcache.file_update_protection=0'],
         $shared + ['budget' => $options['budget'] ?? '0.5', 'json' => "$out/inprocess-$i.json"]);
+}
+// Only some routers have a matcher of their own to time (see matchers.php)
+$matchers = array_intersect(explode(',', $options['routers'] ?? implode(',', array_keys(Bench\Matchers::ALL))), array_keys(Bench\Matchers::ALL));
+for ($i = 1; $i <= $runs && $matchers !== []; $i++) {
+    echo "== matching only, run $i of $runs\n";
+    run_script('matchers.php', ['opcache.enable_cli=1', 'opcache.file_update_protection=0'],
+        ['routers' => implode(',', $matchers)] + $shared + ['budget' => $options['budget'] ?? '0.5', 'json' => "$out/matchers-$i.json"]);
 }
 for ($i = 1; $i <= $httpRuns; $i++) {
     echo "== HTTP, run $i of $httpRuns\n";

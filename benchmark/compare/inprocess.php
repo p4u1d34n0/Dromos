@@ -22,6 +22,7 @@ declare(strict_types=1);
 
 use Bench\Contenders;
 use Bench\Results;
+use Bench\Timer;
 use Bench\RouteSet;
 
 require __DIR__ . '/vendor/autoload.php';
@@ -34,27 +35,6 @@ $routers = explode(',', $options['routers'] ?? implode(',', array_keys(Contender
 $sizes = array_map('intval', explode(',', $options['sizes'] ?? '5,50,500'));
 $budget = (float) ($options['budget'] ?? 0.3);
 
-/**
- * µs per call in each of 5 rounds of $budget / 5 seconds.
- *
- * @return list<float>
- */
-function time_us(callable $fn, float $budget): array
-{
-    $rounds = [];
-    for ($round = 0; $round < 5; $round++) {
-        $fn();
-        $n = 0;
-        $start = hrtime(true);
-        do {
-            $fn();
-            $n++;
-        } while (hrtime(true) - $start < $budget / 5 * 1e9);
-        $rounds[] = (hrtime(true) - $start) / $n / 1000;
-    }
-    return $rounds;
-}
-
 $cacheDir = sys_get_temp_dir() . '/dromos-compare-' . getmypid();
 @mkdir($cacheDir);
 
@@ -66,7 +46,7 @@ foreach ($sizes as $resources) {
 
     foreach ($routers as $name) {
         [$method, $path] = $requests['param, last'];
-        $results->add($routes->count(), 'fpm: boot + param, last', $name, ...time_us(function () use ($name, $routes, $method, $path) {
+        $results->add($routes->count(), 'fpm: boot + param, last', $name, ...Timer::rounds(function () use ($name, $routes, $method, $path) {
             $contender = Contenders::create($name);
             $contender->boot($routes, null);
             $contender->handle($method, $path);
@@ -85,9 +65,9 @@ foreach ($sizes as $resources) {
         Contenders::verify($cached, $routes);
         // Workers run the router's fastest configuration: its route cache where it has one
         foreach ($requests as $label => [$m, $p]) {
-            $results->add($routes->count(), "worker: $label", $name, ...time_us(fn() => $cached->handle($m, $p), $budget));
+            $results->add($routes->count(), "worker: $label", $name, ...Timer::rounds(fn() => $cached->handle($m, $p), $budget));
         }
-        $results->add($routes->count(), 'fpm cached: boot + param, last', $name, ...time_us(function () use ($name, $routes, $method, $path, $routerCache) {
+        $results->add($routes->count(), 'fpm cached: boot + param, last', $name, ...Timer::rounds(function () use ($name, $routes, $method, $path, $routerCache) {
             $contender = Contenders::create($name);
             $contender->boot($routes, $routerCache);
             $contender->handle($method, $path);

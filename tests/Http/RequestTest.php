@@ -6,6 +6,8 @@ namespace Dromos\Tests\Http;
 
 use Dromos\Http\Message\Stream;
 use Dromos\Http\Request;
+use Dromos\Http\Uri;
+use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -154,6 +156,38 @@ final class RequestTest extends TestCase
         $this->assertSame(['n' => 1], $request->getParsedBody());
         $this->assertSame('raw', (string) $request->getBody());
         $this->assertSame(0, CountingRequest::$reads);
+    }
+
+    #[Test]
+    public function test_a_new_uri_sets_the_host_header_to_its_host_and_port(): void
+    {
+        $request = Request::create('GET', '/', headers: ['Host' => 'old.example']);
+
+        $this->assertSame(['new.example'], $request->withUri(new Uri('https://new.example/a'))->getHeader('Host'));
+        $this->assertSame(['new.example:8080'], $request->withUri((new Psr17Factory())->createUri('http://new.example:8080/a'))->getHeader('Host'));
+        $this->assertSame(['old.example'], $request->withUri(new Uri('/a'))->getHeader('Host'), 'a URI without a host leaves it');
+    }
+
+    #[Test]
+    public function test_preserving_the_host_keeps_one_the_request_has_and_fills_in_a_missing_one(): void
+    {
+        $uri = new Uri('https://new.example/a');
+
+        $this->assertSame(['old.example'], Request::create('GET', '/', headers: ['host' => 'old.example'])->withUri($uri, true)->getHeader('Host'));
+        $this->assertSame(['new.example'], Request::create()->withUri($uri, true)->getHeader('Host'));
+    }
+
+    #[Test]
+    public function test_the_parsed_body_must_be_null_an_array_or_an_object(): void
+    {
+        $request = Request::create();
+        $this->assertNull($request->withParsedBody(null)->getParsedBody());
+        $this->assertSame(['a' => 1], $request->withParsedBody(['a' => 1])->getParsedBody());
+        $object = new \stdClass();
+        $this->assertSame($object, $request->withParsedBody($object)->getParsedBody());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $request->withParsedBody('a=1');
     }
 }
 

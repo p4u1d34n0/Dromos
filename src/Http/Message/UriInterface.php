@@ -2,16 +2,13 @@
 
 namespace Dromos\Http\Message;
 
-interface UriInterface
+use Psr\Http\Message\UriInterface as PsrUriInterface;
+
+/**
+ * A PSR-7 URI whose with*() methods return the same class.
+ */
+interface UriInterface extends PsrUriInterface
 {
-    public function getScheme(): string;
-    public function getAuthority(): string;
-    public function getUserInfo(): string;
-    public function getHost(): string;
-    public function getPort(): ?int;
-    public function getPath(): string;
-    public function getQuery(): string;
-    public function getFragment(): string;
     public function withScheme(string $scheme): static;
     public function withUserInfo(string $user, ?string $password = null): static;
     public function withHost(string $host): static;
@@ -19,5 +16,4 @@ interface UriInterface
     public function withPath(string $path): static;
     public function withQuery(string $query): static;
     public function withFragment(string $fragment): static;
-    public function __toString(): string;
 }

@@ -2,14 +2,15 @@
 
 namespace Dromos\Http\Message;
 
-use Dromos\Http\Message\UriInterface;
+use Psr\Http\Message\RequestInterface as PsrRequestInterface;
+use Psr\Http\Message\UriInterface as PsrUriInterface;
 
-interface RequestInterface extends MessageInterface
+/**
+ * A PSR-7 request whose with*() methods return the same class.
+ */
+interface RequestInterface extends MessageInterface, PsrRequestInterface
 {
-    public function getMethod(): string;
     public function withMethod(string $method): static;
-    public function getRequestTarget(): string;
-    public function withRequestTarget(string $target): static;
-    public function getUri(): UriInterface;
-    public function withUri(UriInterface $uri, bool $preserveHost = false): static;
+    public function withRequestTarget(string $requestTarget): static;
+    public function withUri(PsrUriInterface $uri, bool $preserveHost = false): static;
 }

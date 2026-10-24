@@ -9,6 +9,8 @@ use Closure;
 use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\ServerRequestInterface;
 use Dromos\Http\Response;
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Psr\Http\Message\ServerRequestInterface as PsrServerRequestInterface;
 use InvalidArgumentException;
 use ReflectionFunction;
 use ReflectionFunctionAbstract;
@@ -22,13 +24,14 @@ use WeakMap;
  * Calls a route handler (a Closure or [Controller::class, 'method']) with the
  * arguments its parameters ask for:
  *
- * 1. Parameters typed as a ServerRequestInterface get the request.
- * 2. Parameters typed as a ResponseInterface get a new Response.
+ * 1. Parameters typed as a server request (Dromos's or PSR-7's) get the request.
+ * 2. Parameters typed as a response (Dromos's or PSR-7's) get a new Response.
  * 3. Others get the route parameter with the same name,
  * 4. or their default value,
  * 5. or the call fails with "Cannot resolve parameter".
  *
- * The handler must return a ResponseInterface.
+ * The handler must return a PSR-7 response; one from another library is
+ * copied into a Dromos Response (see Response::fromPsr()).
  *
  * Which rule applies to each parameter is worked out by reflection the first
  * time a handler runs and reused after that. Defaults are still evaluated on
@@ -69,12 +72,12 @@ final class HandlerInvoker
             $response = $controller->{$method}(...$this->arguments($this->methodPlan($controller, $method), $params, $request));
         }
 
-        if (!$response instanceof ResponseInterface) {
+        if (!$response instanceof PsrResponseInterface) {
             throw new UnexpectedValueException(
-                'Route handler must return a ' . ResponseInterface::class . ', got ' . get_debug_type($response) . '.'
+                'Route handler must return a ' . PsrResponseInterface::class . ', got ' . get_debug_type($response) . '.'
             );
         }
-        return $response;
+        return Response::fromPsr($response);
     }
 
     /**
@@ -122,8 +125,8 @@ final class HandlerInvoker
             $type = $parameter->getType();
             $class = $type instanceof ReflectionNamedType && !$type->isBuiltin() ? $type->getName() : null;
             $source = match (true) {
-                $class !== null && is_a($class, ServerRequestInterface::class, true) => self::ARG_REQUEST,
-                $class !== null && is_a($class, ResponseInterface::class, true) => self::ARG_RESPONSE,
+                $class !== null && is_a($class, PsrServerRequestInterface::class, true) => self::ARG_REQUEST,
+                $class !== null && is_a($class, PsrResponseInterface::class, true) => self::ARG_RESPONSE,
                 default => self::ARG_NAMED,
             };
             $plan[] = [$source, $parameter->getName(), $parameter];

@@ -5,8 +5,9 @@ namespace Dromos\Http;
 use Dromos\Enums\HttpStatusCodes;
 use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\Stream;
-use Dromos\Http\Message\StreamInterface;
 use Dromos\Traits\MessageTrait;
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Class Response
@@ -27,6 +28,23 @@ class Response implements ResponseInterface
     {
         $this->statusCode   = $code;
         $this->reasonPhrase = $reason;
+    }
+
+    /**
+     * A Dromos response with the status, headers and body of any PSR-7
+     * response, such as one a PSR-15 middleware built with its own factory.
+     * A Dromos response is returned as it is.
+     */
+    public static function fromPsr(PsrResponseInterface $response): ResponseInterface
+    {
+        if ($response instanceof ResponseInterface) {
+            return $response;
+        }
+        $copy = new self($response->getStatusCode(), $response->getReasonPhrase());
+        $copy->protocolVersion = $response->getProtocolVersion();
+        $copy->headers = $response->getHeaders();
+        $copy->body = $response->getBody();
+        return $copy;
     }
 
     /**

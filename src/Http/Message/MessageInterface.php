@@ -2,20 +2,19 @@
 
 namespace Dromos\Http\Message;
 
-use Dromos\Http\Message\StreamInterface;
+use Psr\Http\Message\MessageInterface as PsrMessageInterface;
+use Psr\Http\Message\StreamInterface as PsrStreamInterface;
 
-interface MessageInterface
+/**
+ * A PSR-7 message whose with*() methods return the same class.
+ */
+interface MessageInterface extends PsrMessageInterface
 {
-    public function getProtocolVersion(): string;
     public function withProtocolVersion(string $version): static;
     /** @return array<string, array<string>> Each header's values, by name */
     public function getHeaders(): array;
-    public function hasHeader(string $name): bool;
-    public function getHeader(string $name): array;
-    public function getHeaderLine(string $name): string;
     public function withHeader(string $name, $value): static;
     public function withAddedHeader(string $name, $value): static;
     public function withoutHeader(string $name): static;
-    public function getBody(): StreamInterface;
-    public function withBody(StreamInterface $body): static;
+    public function withBody(PsrStreamInterface $body): static;
 }

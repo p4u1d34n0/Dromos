@@ -4,6 +4,7 @@ namespace Dromos\Traits;
 
 use Closure;
 use Dromos\Http\Middleware\MiddlewareInterface;
+use Psr\Http\Server\MiddlewareInterface as PsrMiddlewareInterface;
 use Dromos\Routing\CachedRoutes;
 use Dromos\Routing\RouteCacheFile;
 use Dromos\Routing\RouteCompiler;
@@ -109,7 +110,7 @@ trait RouteCacheTrait
 
         if ($cache !== null && self::routesAreCacheable()) {
             self::$matchTable = (new RouteCompiler())->compile(self::$routes);
-            /** @var array<string, list<class-string<MiddlewareInterface>>> $middleware checked by routesAreCacheable() */
+            /** @var array<string, list<class-string<MiddlewareInterface|PsrMiddlewareInterface>>> $middleware checked by routesAreCacheable() */
             $middleware = self::$routeMiddleware;
             $cache->save(new CachedRoutes($signature, self::$matchTable, CachedRoutes::handlersOf(self::$routes), $middleware));
         }

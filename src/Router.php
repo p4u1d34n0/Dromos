@@ -15,9 +15,11 @@ use Dromos\Routing\MiddlewarePipeline;
 use Dromos\Routing\RouteCompiler;
 use Dromos\Routing\SharedControllerResolver;
 use Dromos\Traits\RouteCacheTrait;
+use Psr\Http\Server\MiddlewareInterface as PsrMiddlewareInterface;
 
 /**
- * PSR-15–style Router for Dromos.
+ * Router for Dromos: a request handler that PSR-15 code can use through
+ * PsrRequestHandler.
  *
  * Holds the registered routes and middleware, and dispatches requests:
  * RouteCompiler and CompiledRoutes find the route, MiddlewarePipeline runs
@@ -30,10 +32,10 @@ class Router implements RequestHandlerInterface
     /** @var array<string, array<string, Closure|array{0:class-string,1:string}>> Handlers keyed by method, then route URL */
     protected static array $routes = [];
 
-    /** @var MiddlewareInterface[] */
+    /** @var list<MiddlewareInterface|PsrMiddlewareInterface> */
     private array $middlewareStack = [];
 
-    /** @var array<string, list<MiddlewareInterface|class-string<MiddlewareInterface>>> Per-route middleware keyed by "METHOD:/path" */
+    /** @var array<string, list<MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface>>> Per-route middleware keyed by "METHOD:/path" */
     protected static array $routeMiddleware = [];
 
 
@@ -53,7 +55,7 @@ class Router implements RequestHandlerInterface
      * placeholders. It can't change until the routes or middleware do, and
      * there is at most one entry per route, so it's kept until then.
      *
-     * @var array<string, array<string, array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array{}, 3:list<MiddlewareInterface|class-string<MiddlewareInterface>>}>>
+     * @var array<string, array<string, array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array{}, 3:list<MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface>>}>>
      */
     private static array $staticResults = [];
 
@@ -163,7 +165,7 @@ class Router implements RequestHandlerInterface
      *
      * @param string $method HTTP method
      * @param string $url    Route URL path
-     * @param list<MiddlewareInterface|class-string<MiddlewareInterface>> $middleware
+     * @param list<MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface>> $middleware
      * @throws \InvalidArgumentException If an entry is not middleware
      */
     public static function setRouteMiddleware(string $method, string $url, array $middleware): void
@@ -203,7 +205,7 @@ class Router implements RequestHandlerInterface
     // Middleware registration (instance)
     // ────────────────────────────────────────────────────────────────────────────────
 
-    public function addMiddleware(MiddlewareInterface $middleware): void
+    public function addMiddleware(MiddlewareInterface|PsrMiddlewareInterface $middleware): void
     {
         $this->middlewareStack[] = $middleware;
     }
@@ -270,7 +272,7 @@ class Router implements RequestHandlerInterface
      * isn't seen here.
      *
      * @param string $path The URL path only, without the query string
-     * @return array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array<string, string>, 3:list<MiddlewareInterface|class-string<MiddlewareInterface>>}|array{0:404}|array{0:405, 1:string[]}
+     * @return array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array<string, string>, 3:list<MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface>>}|array{0:404}|array{0:405, 1:string[]}
      */
     public static function match(string $method, string $path): array
     {

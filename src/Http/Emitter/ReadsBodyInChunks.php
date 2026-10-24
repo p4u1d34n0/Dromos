@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Dromos\Http\Emitter;
 
-use Dromos\Http\Message\StreamInterface;
 use Generator;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Reads a response body in 8 KB chunks from the start, so emitters can send

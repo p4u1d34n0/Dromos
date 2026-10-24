@@ -2,13 +2,14 @@
 
 namespace Dromos\Http\Message;
 
-use Dromos\Http\Message\RequestInterface;
-use Dromos\Http\Message\UploadedFileInterface;
+use Psr\Http\Message\ServerRequestInterface as PsrServerRequestInterface;
+use Psr\Http\Message\UploadedFileInterface;
 
 /**
- * Representation of an incoming, server-side HTTP request, as defined by PSR-7.
+ * Representation of an incoming, server-side HTTP request, as defined by
+ * PSR-7, whose with*() methods return the same class.
  */
-interface ServerRequestInterface extends RequestInterface
+interface ServerRequestInterface extends RequestInterface, PsrServerRequestInterface
 {
     /**
      * Retrieve server parameters, typically derived from PHP's $_SERVER.
@@ -76,8 +77,9 @@ interface ServerRequestInterface extends RequestInterface
      *
      * @param null|array|object $data
      * @return static
+     * @throws \InvalidArgumentException If $data is any other type
      */
-    public function withParsedBody(null|array|object $data): static;
+    public function withParsedBody($data): static;
 
     /**
      * Retrieve attributes derived from the request (e.g., via routing).

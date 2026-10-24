@@ -2,11 +2,11 @@
 
 # Why Choose Dromos?
 
-> Dromos is a lightweight PHP micro-service library with PSR-7 and PSR-15 inspired interfaces, designed for maximum flexibility and performance. It offers fast routing, route caching, middleware support, and a minimal emitter layer to send responses to any PHP SAPI or server environment.
+> Dromos is a lightweight PHP micro-service library that implements PSR-7 and PSR-15, designed for maximum flexibility and performance. It offers fast routing, route caching, middleware support, and a minimal emitter layer to send responses to any PHP SAPI or server environment.
 
 ## Key Features
 
-* **PSR-7 / PSR-15 Inspired** — Native HTTP message and middleware implementations with PSR-compatible APIs. No external libraries required.
+* **PSR-7 / PSR-15** — Requests, responses, streams and URIs implement the PSR-7 interfaces, and PSR-15 middleware from any package runs alongside Dromos middleware. The only dependencies are the PSR interface packages.
 * **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus regexes grouped by path prefix, so lookups take the same time with 20 routes or 2,000.
 * **Route Groups** — Group routes under a shared prefix with per-group middleware.
 * **Route Caching** — Store the compiled route table in an opcache-friendly PHP file that refreshes itself when routes change.
@@ -19,7 +19,7 @@
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
 
 - **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs under 5 µs of routing work at any size. Its URL matcher on its own is faster than Symfony's in every case measured, and faster than FastRoute's for routes with parameters and 404s from 200 routes up. In lean mode, `Router::match()` skips the request and response objects for the speed of a matcher-only router. See the [router comparison](benchmark/compare/README.md).
-- **Lean Footprint** — No dependencies. A request loads 20 small files (about 1,900 lines).
+- **Lean Footprint** — No dependencies beyond the PSR interfaces. A request loads 25 small files, 3,153 lines, of which 1,128 are the PSR-7 interfaces, mostly docblocks (94 lines of code). In lean mode a request loads 5 files, 820 lines.
 - **High Concurrency** — Custom emitters + OpenSwoole handle 10k+ req/s.
 - **Zero War Story** — No imposed folder structure. Organise your code your way.
 
@@ -220,7 +220,7 @@ The result follows FastRoute's shape:
 
 # Middleware
 
-Dromos uses PSR-15 style middleware. Middleware can be applied globally or per-route/group.
+Dromos runs its own middleware and PSR-15 middleware. Either can be applied globally or per route or group.
 
 ## Global Middleware
 
@@ -241,6 +241,25 @@ Router::setRouteMiddleware('GET', '/reports', [RequireApiKey::class]);
 ```
 
 A class name is built by the controller resolver the first time a request reaches one of its routes, and reused after that, so a request never pays for middleware it doesn't use. Routes with class-name middleware can also be cached by `Router::loadRoutes()`. The default resolver calls the constructor with no arguments; for middleware that needs some, register a resolver backed by your container with `Router::setControllerResolver()`.
+
+## PSR-15 Middleware
+
+Middleware that implements `Psr\Http\Server\MiddlewareInterface` works anywhere Dromos middleware does: globally, per route or group, as an instance or a class name, and from the route cache.
+
+```php
+$router->addMiddleware(new SomePackage\Psr15Middleware());
+$group->middleware(SomePackage\OtherPsr15Middleware::class);
+```
+
+- **Dromos middleware** implements `Dromos\Http\Middleware\MiddlewareInterface`, whose method is `handle()`. PSR-15's is `process()`. The two can be mixed in one chain.
+- **Messages from other PSR-7 libraries are converted.** If a PSR-15 middleware passes on a request, or returns a response, built with another PSR-7 library (tested with Nyholm's), it's copied into a Dromos request or response before Dromos code sees it. Handlers can also return any PSR-7 response.
+- **Handlers can ask for PSR-7 types:** a parameter typed `Psr\Http\Message\ServerRequestInterface` gets the request, and one typed `ResponseInterface` gets a new response, as the Dromos types do.
+
+To use the router where a PSR-15 request handler is expected, for example by a PSR-15 server, wrap it. The wrapper accepts any PSR-7 server request:
+
+```php
+$handler = new Dromos\Http\PsrRequestHandler(new Router());
+```
 
 ## Built-in Middleware
 

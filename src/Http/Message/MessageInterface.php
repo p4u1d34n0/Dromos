@@ -8,6 +8,7 @@ interface MessageInterface
 {
     public function getProtocolVersion(): string;
     public function withProtocolVersion(string $version): static;
+    /** @return array<string, array<string>> Each header's values, by name */
     public function getHeaders(): array;
     public function hasHeader(string $name): bool;
     public function getHeader(string $name): array;

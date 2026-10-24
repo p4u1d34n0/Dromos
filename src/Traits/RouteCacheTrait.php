@@ -2,14 +2,22 @@
 
 namespace Dromos\Traits;
 
+use Closure;
+use Dromos\Http\Middleware\MiddlewareInterface;
+use Dromos\Routing\CachedRoutes;
 use Dromos\Routing\RouteCacheFile;
+use Dromos\Routing\RouteCompiler;
 
 /**
- * Route cache controls for Router.
+ * Route caches for Router.
  *
- * With the cache enabled, the compiled route table is stored in a PHP file
- * (see RouteCacheFile) and reused while the registered routes stay the same,
- * so compiling is skipped. Routes must still be registered on every request.
+ * - loadRoutes() with a cache file dispatches from the cache without
+ *   registering routes, while the routes file is unchanged.
+ * - enableCache() stores the compiled route table and reuses it while the
+ *   registered routes stay the same, so compiling is skipped. Routes are
+ *   still registered on every request.
+ *
+ * Both store a PHP file (see RouteCacheFile).
  */
 trait RouteCacheTrait
 {
@@ -62,5 +70,70 @@ trait RouteCacheTrait
     public static function cachedRoutes(): array
     {
         return static::$routeCache?->load()?->handlers ?? [];
+    }
+
+    /**
+     * Register the routes defined in a PHP file.
+     *
+     * With a cache file, the first request runs the routes file and stores its
+     * routes, compiled, in the cache. Later requests dispatch from the cache
+     * without running the routes file, registering or compiling anything,
+     * until the routes file changes. Only routes to controllers, with
+     * middleware given by class name, can be stored; if the file defines any
+     * others, it simply runs on every request. Routes registered before this call also
+     * mean the file runs every time, so their order is kept.
+     *
+     * The cache file is run with `require`: keep it in a directory only the
+     * application can write to.
+     *
+     * @throws \InvalidArgumentException If the routes file doesn't exist
+     */
+    public static function loadRoutes(string $routesFile, ?string $cacheFile = null): void
+    {
+        $signature = CachedRoutes::signatureOfFile($routesFile)
+            ?? throw new \InvalidArgumentException("Routes file {$routesFile} does not exist.");
+        $cache = $cacheFile !== null && self::$routes === [] ? new RouteCacheFile($cacheFile) : null;
+
+        $cached = $cache?->load();
+        if ($cached !== null && $cached->signature === $signature) {
+            self::$routes = $cached->handlers;
+            self::$routeMiddleware = $cached->middleware;
+            self::$matchTable = $cached->table;
+            return;
+        }
+
+        (static function (string $file): void {
+            require $file;
+        })($routesFile);
+
+        if ($cache !== null && self::routesAreCacheable()) {
+            self::$matchTable = (new RouteCompiler())->compile(self::$routes);
+            /** @var array<string, list<class-string<MiddlewareInterface>>> $middleware checked by routesAreCacheable() */
+            $middleware = self::$routeMiddleware;
+            $cache->save(new CachedRoutes($signature, self::$matchTable, CachedRoutes::handlersOf(self::$routes), $middleware));
+        }
+    }
+
+    /**
+     * True if every route is a controller route whose middleware are class
+     * names, so the routes can be stored and dispatched from a cache file.
+     */
+    private static function routesAreCacheable(): bool
+    {
+        foreach (self::$routeMiddleware as $middleware) {
+            foreach ($middleware as $entry) {
+                if (!is_string($entry)) {
+                    return false;
+                }
+            }
+        }
+        foreach (self::$routes as $routes) {
+            foreach ($routes as $handler) {
+                if ($handler instanceof Closure) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

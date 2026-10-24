@@ -18,15 +18,30 @@ final class DromosContender implements Contender
         return 'dromos';
     }
 
+    /**
+     * Without a cache directory the routes are registered on every boot. With
+     * one, they're written to a routes file (as an app keeps them) and loaded
+     * with Router::loadRoutes(), so later boots dispatch from the cache.
+     */
     public function boot(RouteSet $routes, ?string $cacheDir): void
     {
         Router::reset();
-        foreach ($routes->routes() as [$method, $path, $action]) {
-            Router::{ucfirst(strtolower($method))}($path, [DromosController::class, $action]);
+        if ($cacheDir === null) {
+            foreach ($routes->routes() as [$method, $path, $action]) {
+                Router::{ucfirst(strtolower($method))}($path, [DromosController::class, $action]);
+            }
+            return;
         }
-        if ($cacheDir !== null) {
-            Router::enableCache("$cacheDir/dromos-routes.php");
+
+        $routesFile = "$cacheDir/dromos-routes-source.php";
+        if (!is_file($routesFile)) {
+            $code = "<?php\n\nuse Dromos\\Router;\nuse " . DromosController::class . ";\n\n";
+            foreach ($routes->routes() as [$method, $path, $action]) {
+                $code .= sprintf("Router::%s('%s', [DromosController::class, '%s']);\n", ucfirst(strtolower($method)), $path, $action);
+            }
+            file_put_contents($routesFile, $code);
         }
+        Router::loadRoutes($routesFile, "$cacheDir/dromos-routes.php");
     }
 
     public function handle(string $method, string $path): array

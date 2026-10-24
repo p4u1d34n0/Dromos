@@ -24,7 +24,7 @@ final class CompiledRoutes
      * Per method and path, the match for a path that is an exact route's URL.
      * It never changes, so it's worked out on first lookup and reused.
      *
-     * @var array<string, array<string, RouteMatch>>
+     * @var array<string, array<string, array{0:string,1:array<string,string>,2:int}>>
      */
     private array $exactMatches = [];
 
@@ -69,27 +69,36 @@ final class CompiledRoutes
      */
     public function match(string $method, string $path): ?RouteMatch
     {
+        $found = $this->find($method, $path);
+        return $found === null ? null : new RouteMatch($found[0], $found[1]);
+    }
+
+    /**
+     * match() as plain data, without creating a RouteMatch, for Router,
+     * which runs it on every request.
+     *
+     * @return array{0:string,1:array<string,string>,2:int}|null [route URL, params, position]
+     */
+    public function find(string $method, string $path): ?array
+    {
         $position = $this->table[$method]['exact'][$path] ?? null;
         if ($position !== null) {
             return $this->exactMatches[$method][$path] ??= $this->exactMatch($method, $path, $position);
         }
-
-        $match = $this->matchParameterised($method, $path);
-        return $match === null ? null : new RouteMatch($match[0], $match[1]);
+        return $this->matchParameterised($method, $path);
     }
 
     /**
      * The match for a path that is the URL of the exact route at $position:
      * that route, unless a parameterised route registered earlier also
      * matches the path, in which case the earlier route wins.
+     *
+     * @return array{0:string,1:array<string,string>,2:int}
      */
-    private function exactMatch(string $method, string $path, int $position): RouteMatch
+    private function exactMatch(string $method, string $path, int $position): array
     {
         $earlier = $this->matchParameterised($method, $path);
-        if ($earlier === null || $earlier[2] >= $position) {
-            return new RouteMatch($path);
-        }
-        return new RouteMatch($earlier[0], $earlier[1]);
+        return $earlier === null || $earlier[2] >= $position ? [$path, [], $position] : $earlier;
     }
 
     /**
@@ -101,7 +110,7 @@ final class CompiledRoutes
     {
         $allowed = [];
         foreach (array_keys($this->table) as $method) {
-            if ($method !== $except && $this->match($method, $path) !== null) {
+            if ($method !== $except && $this->find($method, $path) !== null) {
                 $allowed[] = $method;
             }
         }

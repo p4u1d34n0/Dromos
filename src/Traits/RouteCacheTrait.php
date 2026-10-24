@@ -96,6 +96,7 @@ trait RouteCacheTrait
 
         $cached = $cache?->load();
         if ($cached !== null && $cached->signature === $signature) {
+            self::forgetMatchTable();
             self::$routes = $cached->handlers;
             self::$routeMiddleware = $cached->middleware;
             self::$matchTable = $cached->table;

@@ -55,15 +55,24 @@ final class RouterReferenceTest extends RouterTestCase
                 $routes[$method][$url] = $url;
             }
 
+            $found = 0;
             for ($i = 0; $i < 200; $i++) {
-                $method = self::METHODS[mt_rand(0, 3)];
-                $path = $this->randomPath(false);
+                // Half the requests fill in a registered route, so most of those match
+                if ($i % 2 === 0) {
+                    $method = self::METHODS[mt_rand(0, 3)];
+                    $path = $this->randomPath(false);
+                } else {
+                    $method = array_rand($routes);
+                    $path = $this->fillIn(array_rand($routes[$method]));
+                }
 
                 $response = $this->response($method, $path);
                 $actual = [$response->getStatusCode(), json_decode((string) $response->getBody(), true)];
 
                 $this->assertSame($this->expected($routes, $method, $path), $this->normalise($actual), "$method $path (seed $seed, table $table)");
+                $found += $actual[0] === 200 ? 1 : 0;
             }
+            $this->assertGreaterThan(20, $found, "too few requests matched a route to test matching (seed $seed, table $table)");
         }
     }
 
@@ -135,18 +144,33 @@ final class RouterReferenceTest extends RouterTestCase
     // Helpers
     // ────────────────────────────────────────────────────────────────────────────────
 
-    /** A random route template (with placeholders) or request path (with values). */
+    /**
+     * A random route template (with placeholders, whole-segment or after a
+     * literal such as "x.{p1}") or request path (with values, sometimes with
+     * a trailing slash).
+     */
     private function randomPath(bool $template): string
     {
         $segments = [];
-        for ($i = mt_rand(1, 3); $i > 0; $i--) {
-            if (mt_rand(0, 2) === 0) {
+        for ($i = mt_rand(1, 4); $i > 0; $i--) {
+            $roll = mt_rand(0, 8);
+            if ($roll <= 2) {
                 $segments[] = $template ? '{p' . mt_rand(0, 2) . '}' : self::VALUES[mt_rand(0, count(self::VALUES) - 1)];
+            } elseif ($roll === 3) {
+                $segments[] = 'x.' . ($template ? '{p' . mt_rand(0, 2) . '}' : self::VALUES[mt_rand(0, count(self::VALUES) - 1)]);
             } else {
                 $segments[] = self::WORDS[mt_rand(0, count(self::WORDS) - 1)];
             }
         }
-        return '/' . implode('/', $segments);
+        $path = '/' . implode('/', $segments);
+        return !$template && mt_rand(0, 9) === 0 ? $path . '/' : $path;
+    }
+
+    /** A request path for a route template: each placeholder gets a random value. */
+    private function fillIn(string $template): string
+    {
+        $path = (string) preg_replace_callback('/\{[^}]+\}/', fn() => self::VALUES[mt_rand(0, count(self::VALUES) - 1)], $template);
+        return mt_rand(0, 9) === 0 ? $path . '/' : $path;
     }
 
     /**

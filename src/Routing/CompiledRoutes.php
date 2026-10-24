@@ -23,14 +23,14 @@ final class CompiledRoutes
     private array $shadowedBy = [];
 
     /**
-     * @param array<string, array{exact: array<string, int>, regexes: string[], parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
+     * @param array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
      */
     private function __construct(private readonly array $table)
     {
     }
 
     /**
-     * @param array<string, array{exact: array<string, int>, regexes: string[], parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
+     * @param array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}> $table
      */
     public static function fromArray(array $table): self
     {
@@ -40,7 +40,7 @@ final class CompiledRoutes
     /**
      * The table as plain arrays and strings, suitable for var_export().
      *
-     * @return array<string, array{exact: array<string, int>, regexes: string[], parameterised: array<int, array{0:string,1:string[],2:int}>}>
+     * @return array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}>
      */
     public function toArray(): array
     {
@@ -87,12 +87,19 @@ final class CompiledRoutes
     }
 
     /**
-     * @param array{regexes: string[], parameterised: array<int, array{0:string,1:string[],2:int}>} $table
+     * @param array{prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>} $table
      * @return array{0:string,1:array<string,string>,2:int}|null [route URL, params, position]
      */
     private function matchParameterised(array $table, string $path): ?array
     {
-        foreach ($table['regexes'] as $regex) {
+        // The longest prefix of the path that has routes holds every route that can match it
+        for ($prefix = $path; !isset($table['prefixes'][$prefix]); $prefix = RouteCompiler::parentOf($prefix)) {
+            if ($prefix === '') {
+                return null;
+            }
+        }
+
+        foreach ($table['prefixes'][$prefix] as $regex) {
             if (preg_match($regex, $path, $m)) {
                 [$url, $names, $position] = $table['parameterised'][(int) $m['MARK']];
                 return [$url, array_combine($names, array_slice($m, 1, count($names))), $position];

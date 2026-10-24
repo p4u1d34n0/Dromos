@@ -46,6 +46,28 @@ final class CompiledRoutesTest extends TestCase
     }
 
     #[Test]
+    public function test_repeated_lookups_of_an_exact_route_give_the_same_answer_for_each_method(): void
+    {
+        // GET /a/b is shadowed by the earlier GET /a/{x}; POST /a/b is not
+        $routes = $this->compile(['GET' => ['/a/{x}', '/a/b'], 'POST' => ['/a/b']]);
+
+        foreach ([1, 2] as $lookup) {
+            $this->assertEquals(new RouteMatch('/a/{x}', ['x' => 'b']), $routes->match('GET', '/a/b'), "GET, lookup $lookup");
+            $this->assertEquals(new RouteMatch('/a/b'), $routes->match('POST', '/a/b'), "POST, lookup $lookup");
+        }
+    }
+
+    #[Test]
+    public function test_a_later_exact_route_is_not_answered_for_a_path_of_another_exact_route(): void
+    {
+        $routes = $this->compile(['GET' => ['/a', '/b']]);
+
+        $this->assertSame('/a', $routes->match('GET', '/a')?->url);
+        $this->assertSame('/b', $routes->match('GET', '/b')?->url);
+        $this->assertSame('/a', $routes->match('GET', '/a')?->url);
+    }
+
+    #[Test]
     public function test_parameterised_routes_are_split_across_regexes(): void
     {
         $urls = array_map(fn(int $i) => "/r/{id}/v$i", range(1, RouteCompiler::ROUTES_PER_REGEX * 2 + 1));

@@ -23,7 +23,7 @@ class RouteGroup
 {
     private string $prefix;
 
-    /** @var MiddlewareInterface[] */
+    /** @var list<MiddlewareInterface|class-string<MiddlewareInterface>> */
     private array $middleware = [];
 
     public function __construct(string $prefix)
@@ -34,10 +34,13 @@ class RouteGroup
     /**
      * Add middleware to this group. All routes registered within will inherit it.
      *
-     * @param MiddlewareInterface ...$middleware
+     * Pass an instance, or a class name to have the middleware built only when
+     * a request reaches one of the group's routes (see Router::setRouteMiddleware()).
+     *
+     * @param MiddlewareInterface|class-string<MiddlewareInterface> ...$middleware
      * @return self
      */
-    public function middleware(MiddlewareInterface ...$middleware): self
+    public function middleware(MiddlewareInterface|string ...$middleware): self
     {
         foreach ($middleware as $mw) {
             $this->middleware[] = $mw;

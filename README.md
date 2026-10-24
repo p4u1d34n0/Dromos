@@ -193,7 +193,15 @@ $router->addMiddleware(new RateLimitMiddleware(100, 60));
 
 ## Per-Route / Per-Group Middleware
 
-See [Route Groups](#route-groups) above for per-group middleware.
+See [Route Groups](#route-groups) above for per-group middleware. Middleware can be an instance or a class name:
+
+```php
+$group->middleware(new AuthMiddleware($authenticator)); // an instance, built now
+$group->middleware(RequireApiKey::class);               // a class name, built on first use
+Router::setRouteMiddleware('GET', '/reports', [RequireApiKey::class]);
+```
+
+A class name is built by the controller resolver the first time a request reaches one of its routes, and reused after that, so a request never pays for middleware it doesn't use. Routes with class-name middleware can also be cached by `Router::loadRoutes()`. The default resolver calls the constructor with no arguments; for middleware that needs some, register a resolver backed by your container with `Router::setControllerResolver()`.
 
 ## Built-in Middleware
 
@@ -438,7 +446,39 @@ Loads `.env` files into `$_ENV` and `putenv()`. Skips comments (`#`) and malform
 
 # Route Caching
 
-In production, cache the compiled route table so it isn't rebuilt on every request. Under PHP-FPM this makes routing about 2.5 times faster with a few hundred routes or more.
+Dromos has two route caches. Both store the compiled route table in a PHP file that opcache keeps in shared memory.
+
+## Cached routes file (fastest)
+
+Put your routes in their own file and load it with a cache file:
+
+```php
+// public/index.php
+Router::loadRoutes(__DIR__ . '/../routes.php', __DIR__ . '/../storage/cache/routes.php');
+(new Emitter())->emit((new Router())->handle(new Request()));
+```
+
+```php
+// routes.php
+use Dromos\Router;
+
+Router::Get('/users/{id}', [UserController::class, 'show']);
+Router::group('/admin', function ($group) {
+    $group->middleware(RequireAdmin::class); // by class name, so it can be cached
+    $group->get('/stats', [StatsController::class, 'index']);
+});
+```
+
+The first request runs `routes.php` and stores the routes. Every later request dispatches straight from the cache: `routes.php` doesn't run, and nothing is registered or compiled. Under PHP-FPM, a request with 2,000 routes takes about the same time as one with 20.
+
+- **It rebuilds itself when `routes.php` changes** (its size, modification time or inode). If `routes.php` includes other route files, delete the cache file when you deploy changes to them.
+- **Only controller routes can be stored.** Closures and middleware *instances* can't be, so if `routes.php` defines any, it simply runs on every request. Give middleware by class name to keep them cacheable; they're built by the controller resolver when a request first reaches one of their routes.
+- **Routes registered before `loadRoutes()`** mean the file runs on every request, so the order of all routes is kept. Routes added after it work as normal.
+- Use a different file from `enableCache()` below.
+
+## Compiled table cache
+
+If your routes use closures, keep registering them on every request and let the cache skip compiling them:
 
 ```env
 ROUTER_CACHE_FILE=/var/www/app/storage/cache/routes.php
@@ -461,12 +501,11 @@ Router::disableCache();
 
 How it works:
 
-- **The cache file is PHP.** Opcache keeps it in shared memory, so loading it costs almost nothing.
 - **It stays current on its own.** A signature of the registered routes is stored with the table. If a route is added, removed or changed, the file is rebuilt on the next request, so you don't need to clear it on deploy.
 - **Every route type works.** Closures, controllers, groups and middleware all behave exactly as they do without the cache.
-- **A broken cache never fails a request.** If the file can't be written, the error is logged and the routes are compiled as normal. A corrupt or outdated file is rebuilt.
+- **A broken cache never fails a request.** This is true of both caches: if the file can't be written, the error is logged and the routes are compiled as normal. A corrupt or outdated file is rebuilt.
 
-**Security:** the cache file is run with `require`. Keep it in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
+**Security:** cache files are run with `require`. Keep it in a directory only your application can write to, never a shared one such as `/tmp` on a multi-user server.
 
 **Upgrading from 1.1:** the old JSON cache file is replaced automatically. In 1.1, routes in the cache file could be dispatched without being registered. That skipped their middleware and kept deleted routes alive. This still works in 1.2 but triggers an `E_USER_DEPRECATED` notice, and it stops working in 2.0. Register your routes on every request.
 

@@ -8,20 +8,25 @@ use Closure;
 
 /**
  * What the route cache stores: the compiled table for a set of routes, the
- * signature identifying that set, and its controller handlers.
+ * signature identifying that set, its controller handlers and their
+ * middleware class names (closures and middleware instances can't be stored).
  *
- * The handlers only serve the deprecated mode where routes are dispatched
- * from the cache without being registered (closures can't be stored).
+ * The signature is either a hash of the registered routes (signatureOf(),
+ * for Router::enableCache()) or of the routes file they came from
+ * (signatureOfFile(), for Router::loadRoutes(), which dispatches the stored
+ * handlers without registering anything).
  */
 final readonly class CachedRoutes
 {
     /**
-     * @param array<string, array<string, array{0:class-string,1:string}>> $handlers Controller handlers by method, then route URL
+     * @param array<string, array<string, array{0:class-string,1:string}>> $handlers   Controller handlers by method, then route URL
+     * @param array<string, list<class-string>>                            $middleware Middleware class names keyed by "METHOD:/path"
      */
     public function __construct(
         public string $signature,
         public CompiledRoutes $table,
         public array $handlers,
+        public array $middleware = [],
     ) {
     }
 
@@ -42,6 +47,19 @@ final readonly class CachedRoutes
             }
         }
         return $handlers;
+    }
+
+    /**
+     * A signature that changes whenever the file is edited or replaced (its
+     * inode, size or modification time changes), or null if it doesn't exist.
+     */
+    public static function signatureOfFile(string $file): ?string
+    {
+        $stat = @stat($file);
+        if ($stat === false) {
+            return null;
+        }
+        return 'file:' . hash('xxh128', $file . "\0" . $stat['ino'] . "\0" . $stat['size'] . "\0" . $stat['mtime']);
     }
 
     /**

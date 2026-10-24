@@ -13,7 +13,7 @@
 * **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
 * **Input Validation** — Built-in validator with pipe-delimited rules for API input.
 * **JSON-First API Design** — JSON request body parsing, JSON error responses, and response helpers.
-* **Minimal Emitter Layer** — Built-in `Emitter` handles status line, headers, and body output. Implement `EmitterInterface` to target other runtimes like OpenSwoole.
+* **Minimal Emitter Layer** — `Emitter` sends responses under PHP-FPM, and `SwooleEmitter` under OpenSwoole. Implement `EmitterInterface` to target other runtimes.
 * **Micro-Service Ready** — Perfect for REST, RPC, or event-driven micro-services with zero framework magic.
 
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
@@ -437,19 +437,60 @@ $emitter = new Emitter();
 $emitter->emit($response);
 ```
 
-### Custom Emitters
+## Running under OpenSwoole
 
-Implement `EmitterInterface` to target non-SAPI environments (e.g., OpenSwoole):
+`SwooleEmitter` sends a response through OpenSwoole's HTTP server. It needs the `openswoole` extension (22 or later). Register your routes once, before the server starts, and every worker reuses the compiled route table:
+
+```php
+use Dromos\Http\Emitter\SwooleEmitter;
+use Dromos\Http\Request;
+use Dromos\Router;
+use OpenSwoole\Http\Request as SwooleRequest;
+use OpenSwoole\Http\Response as SwooleResponse;
+use OpenSwoole\Http\Server;
+
+require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/routes.php';
+
+$router = new Router();
+$server = new Server('0.0.0.0', 9501);
+
+$server->on('request', function (SwooleRequest $in, SwooleResponse $out) use ($router) {
+    $query = $in->server['query_string'] ?? '';
+    $request = Request::create(
+        method: $in->server['request_method'],
+        uri: $in->server['request_uri'] . ($query === '' ? '' : '?' . $query),
+        serverParams: array_change_key_case($in->server, CASE_UPPER),
+        headers: $in->header ?? [],
+        queryParams: $in->get ?? [],
+        parsedBody: $in->post,
+        body: (string) $in->rawContent(),
+    );
+
+    (new SwooleEmitter($out))->emit($router->handle($request));
+});
+
+$server->start();
+```
+
+- **JSON bodies:** OpenSwoole only parses form posts. Decode `rawContent()` into `parsedBody` yourself, as `benchmark/src/SwooleRequestFactory.php` does.
+- **Shared controllers:** each worker keeps one controller instance per class for every request it handles, so don't keep per-request state in controller properties.
+- **Headers:** every value of a header is sent, including several `Set-Cookie` headers.
+- **Bodies:** a body that fits in 8 KB is sent in one piece with a `Content-Length`. A larger file or socket stream is sent in 8 KB chunks with chunked transfer encoding, so it never sits in memory whole.
+
+### Other runtimes
+
+Implement `EmitterInterface` to send responses anywhere else:
 
 ```php
 use Dromos\Http\Emitter\EmitterInterface;
 use Dromos\Http\Message\ResponseInterface;
 
-class SwooleEmitter implements EmitterInterface
+class MyEmitter implements EmitterInterface
 {
     public function emit(ResponseInterface $response): void
     {
-        // Your OpenSwoole response logic here
+        // Send the status, headers and body
     }
 }
 ```

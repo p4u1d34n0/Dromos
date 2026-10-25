@@ -2,7 +2,7 @@
 
 # Dromos
 
-A PHP router for fast APIs. In the [router comparison](benchmark/compare/README.md) it beats Symfony Routing, FastRoute, Laravel's router, Flight, Slim and Mezzio in every in-process test at 2,000 routes. It loads 5 files to route a request, and it depends only on the PSR interface packages.
+A PHP router for fast APIs: [dromos.codenexis.com](https://dromos.codenexis.com). In the [router comparison](benchmark/compare/README.md) it beats Symfony Routing, FastRoute, Laravel's router, Flight, Slim and Mezzio in every in-process test at 2,000 routes. It loads 5 files to route a request, and it depends only on the PSR interface packages.
 
 ```php
 Router::Get('/users/{id}', [UserController::class, 'show']);

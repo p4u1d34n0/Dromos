@@ -79,7 +79,10 @@ trait RouteCacheTrait
      * With a cache file, the first request runs the routes file and stores its
      * routes, compiled, in the cache. Later requests dispatch from the cache
      * without running the routes file, registering or compiling anything,
-     * until the routes file changes. Only routes to controllers, with
+     * until the routes file changes. While opcache holds both files as
+     * current, the routes file isn't checked, so a change counts when PHP
+     * would notice changed code (see RouteCacheFile::isPinnedByOpcache()).
+     * Only routes to controllers, with
      * middleware given by class name, can be stored; if the file defines any
      * others, it simply runs on every request. Routes registered before this call also
      * mean the file runs every time, so their order is kept.
@@ -91,18 +94,21 @@ trait RouteCacheTrait
      */
     public static function loadRoutes(string $routesFile, ?string $cacheFile = null): void
     {
-        $signature = CachedRoutes::signatureOfFile($routesFile)
-            ?? throw new \InvalidArgumentException("Routes file {$routesFile} does not exist.");
         $cache = $cacheFile !== null && self::$routes === [] ? new RouteCacheFile($cacheFile) : null;
 
-        $cached = $cache?->load();
-        if ($cached !== null && $cached->signature === $signature) {
+        // While opcache holds both files as current, PHP would run the routes
+        // file as it was when the cache was built, so it isn't checked
+        $signature = $cache?->isPinnedByOpcache($routesFile) ? null : self::signatureOfRoutesFile($routesFile);
+        $current = $cache?->current($signature);
+        if ($current !== null) {
             self::forgetMatchTable();
-            self::$routes = $cached->handlers;
-            self::$routeMiddleware = $cached->middleware;
-            self::$matchTable = $cached->table;
+            [self::$matchTable, self::$routes, self::$routeMiddleware] = $current;
+            if ($signature !== null) {
+                $cache->pinWith($routesFile);
+            }
             return;
         }
+        $signature ??= self::signatureOfRoutesFile($routesFile);
 
         (static function (string $file): void {
             require $file;
@@ -114,6 +120,15 @@ trait RouteCacheTrait
             $middleware = self::$routeMiddleware;
             $cache->save(new CachedRoutes($signature, self::$matchTable, CachedRoutes::handlersOf(self::$routes), $middleware));
         }
+    }
+
+    /**
+     * @throws \InvalidArgumentException If the routes file doesn't exist
+     */
+    private static function signatureOfRoutesFile(string $routesFile): string
+    {
+        return CachedRoutes::signatureOfFile($routesFile)
+            ?? throw new \InvalidArgumentException("Routes file {$routesFile} does not exist.");
     }
 
     /**

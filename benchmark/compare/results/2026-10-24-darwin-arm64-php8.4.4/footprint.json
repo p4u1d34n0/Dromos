@@ -1,0 +1,67 @@
+{
+    "script": "footprint",
+    "recorded_at": "2026-10-24T22:31:12+00:00",
+    "environment": {
+        "php": "8.4.4",
+        "os": "Darwin 25.2.0 arm64",
+        "cpu": "Apple M3 Pro, 11 cores",
+        "jit": "disable",
+        "xdebug": false,
+        "dromos": "v1.3.0-2-g5034632",
+        "packages": {
+            "flightphp/core": "v3.19.4",
+            "illuminate/routing": "v12.70.1",
+            "nikic/fast-route": "1.3.1",
+            "symfony/routing": "v7.4.21",
+            "slim/slim": "4.15.3",
+            "mezzio/mezzio": "3.28.1",
+            "mezzio/mezzio-fastroute": "3.14.0"
+        }
+    },
+    "notes": {
+        "opcache": false
+    },
+    "routes": 200,
+    "footprint": {
+        "dromos": {
+            "files": 19,
+            "lines": 1970,
+            "memory": 577064
+        },
+        "dromos-lean": {
+            "files": 5,
+            "lines": 817,
+            "memory": 374768
+        },
+        "flight": {
+            "files": 10,
+            "lines": 4332,
+            "memory": 928072
+        },
+        "laravel": {
+            "files": 75,
+            "lines": 26248,
+            "memory": 4225136
+        },
+        "slim": {
+            "files": 68,
+            "lines": 8286,
+            "memory": 1241008
+        },
+        "mezzio": {
+            "files": 103,
+            "lines": 19198,
+            "memory": 2969272
+        },
+        "fastroute": {
+            "files": 10,
+            "lines": 723,
+            "memory": 354824
+        },
+        "symfony": {
+            "files": 10,
+            "lines": 2042,
+            "memory": 806760
+        }
+    }
+}

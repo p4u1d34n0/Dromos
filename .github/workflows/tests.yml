@@ -1,0 +1,47 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - run: vendor/bin/phpunit
+      - name: phpunit with opcache (exercises the route cache's opcache path)
+        run: php -d opcache.enable_cli=1 -d opcache.file_update_protection=0 vendor/bin/phpunit
+      - run: vendor/bin/phpstan analyse --no-progress
+
+  router-comparison:
+    # A quick run of the head-to-head benchmark: every router must return the
+    # expected status and body for every request before it's timed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+        working-directory: benchmark/compare
+      # One quick in-process run plus the footprint, through the same dataset
+      # pipeline as a full run (no HTTP: the runner has no ab, and shared
+      # runners are too noisy for those numbers to mean much)
+      - run: php run.php --runs=1 --http-runs=0 --budget=0.01 --out="$RUNNER_TEMP/results" && php report.php "$RUNNER_TEMP/results"
+        working-directory: benchmark/compare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-comparison-results
+          path: ${{ runner.temp }}/results

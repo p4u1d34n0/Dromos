@@ -1,0 +1,8 @@
+# Kept out of the package Composer downloads: only needed to develop Dromos
+/.github            export-ignore
+/benchmark          export-ignore
+/tests              export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/phpunit.xml.dist   export-ignore
+/phpstan.dist.neon  export-ignore

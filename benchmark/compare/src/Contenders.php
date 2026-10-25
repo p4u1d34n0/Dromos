@@ -8,13 +8,14 @@ final class Contenders
 {
     /** @var array<string, class-string<Contender>> */
     public const ALL = [
-        'dromos'    => Contenders\DromosContender::class,
-        'flight'    => Contenders\FlightContender::class,
-        'laravel'   => Contenders\LaravelContender::class,
-        'slim'      => Contenders\SlimContender::class,
-        'mezzio'    => Contenders\MezzioContender::class,
-        'fastroute' => Contenders\FastRouteContender::class,
-        'symfony'   => Contenders\SymfonyContender::class,
+        'dromos'       => Contenders\DromosContender::class,
+        'dromos-lean'  => Contenders\DromosLeanContender::class,
+        'flight'       => Contenders\FlightContender::class,
+        'laravel'      => Contenders\LaravelContender::class,
+        'slim'         => Contenders\SlimContender::class,
+        'mezzio'       => Contenders\MezzioContender::class,
+        'fastroute'    => Contenders\FastRouteContender::class,
+        'symfony'      => Contenders\SymfonyContender::class,
     ];
 
     public static function create(string $name): Contender

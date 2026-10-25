@@ -48,6 +48,15 @@ class Router implements RequestHandlerInterface
      */
     private static ?array $routesFromCache = null;
 
+    /**
+     * match()'s result for each method and path that matched a route without
+     * placeholders. It can't change until the routes or middleware do, and
+     * there is at most one entry per route, so it's kept until then.
+     *
+     * @var array<string, array<string, array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array{}, 3:list<MiddlewareInterface|class-string<MiddlewareInterface>>}>>
+     */
+    private static array $staticResults = [];
+
     private static ?ControllerResolverInterface $controllerResolver = null;
 
     private static ?HandlerInvoker $invoker = null;
@@ -88,6 +97,7 @@ class Router implements RequestHandlerInterface
     {
         self::$matchTable = null;
         self::$routesFromCache = null;
+        self::$staticResults = [];
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -163,6 +173,7 @@ class Router implements RequestHandlerInterface
         }
         $key = strtoupper($method) . ':' . $url;
         self::$routeMiddleware[$key] = array_merge(self::$routeMiddleware[$key] ?? [], $middleware);
+        self::$staticResults = [];
     }
 
     protected static function addRoute(string $method, string $url, $target): string
@@ -217,28 +228,23 @@ class Router implements RequestHandlerInterface
     public function dispatch(ServerRequestInterface $request): ResponseInterface
     {
         try {
-            $method = $request->getMethod();
             $path = $request->getUri()->getPath();
-
-            $match = self::matchTable()->match($method, $path);
-            if ($match !== null) {
-                $target = self::activeRoutes()[$method][$match->url];
-                $middleware = self::$routeMiddleware[$method . ':' . $match->url] ?? [];
+            $route = self::match($request->getMethod(), $path);
+            if ($route[0] === 200) {
+                [, $handler, $params, $middleware] = $route;
                 if ($middleware === []) {
-                    return self::invoker()->invoke($target, $match->params, $request);
+                    return self::invoker()->invoke($handler, $params, $request);
                 }
                 return MiddlewarePipeline::wrap(
                     $middleware,
-                    fn(ServerRequestInterface $r) => self::invoker()->invoke($target, $match->params, $r),
+                    fn(ServerRequestInterface $r) => self::invoker()->invoke($handler, $params, $r),
                     self::resolver()
                 )->handle($request);
             }
 
-            // No match: 405 if the path exists under other methods, else 404. These
-            // are the client's errors, so they're answered without being logged
-            $allowedMethods = self::matchTable()->allowedMethods($path, $method);
-            $error = $allowedMethods !== []
-                ? RouterException::methodNotAllowed($allowedMethods)
+            // No match: these are the client's errors, so they're answered without being logged
+            $error = $route[0] === 405
+                ? RouterException::methodNotAllowed($route[1])
                 : RouterException::routeNotFound($path);
             return RouterExceptionHandler::render($error, $error->getStatusCode(), $error->getArgs());
         } catch (RouterException $e) {
@@ -246,6 +252,51 @@ class Router implements RequestHandlerInterface
         } catch (\Throwable $e) {
             return RouterExceptionHandler::handle($e);
         }
+    }
+
+    /**
+     * Lean mode: find the route for a method and path without creating a
+     * request or response, running middleware or calling the handler. The
+     * caller does those itself, as with a matcher-only router such as
+     * FastRoute, whose result shape this follows:
+     *
+     * - [200, $handler, $params, $middleware] when a route matches
+     * - [404] when no route matches the path
+     * - [405, $allowedMethods] when routes match the path only under other methods
+     *
+     * It uses the same routes and route cache as handle(). The route's own
+     * middleware is returned, not run: run it yourself if you rely on it.
+     * Middleware added with addMiddleware() belongs to a Router instance and
+     * isn't seen here.
+     *
+     * @param string $path The URL path only, without the query string
+     * @return array{0:200, 1:Closure|array{0:class-string,1:string}, 2:array<string, string>, 3:list<MiddlewareInterface|class-string<MiddlewareInterface>>}|array{0:404}|array{0:405, 1:string[]}
+     */
+    public static function match(string $method, string $path): array
+    {
+        if (isset(self::$staticResults[$method][$path])) {
+            return self::$staticResults[$method][$path];
+        }
+
+        // Inlined lookups (matchTable(), activeRoutes()): this runs on every request
+        $table = self::$matchTable ?? self::matchTable();
+        $match = $table->find($method, $path);
+        if ($match !== null) {
+            [$url, $params] = $match;
+            $found = [
+                200,
+                (self::$routesFromCache ?? self::$routes)[$method][$url],
+                $params,
+                self::$routeMiddleware === [] ? [] : self::$routeMiddleware[$method . ':' . $url] ?? [],
+            ];
+            if ($params === []) {
+                self::$staticResults[$method][$path] = $found;
+            }
+            return $found;
+        }
+
+        $allowedMethods = $table->allowedMethods($path, $method);
+        return $allowedMethods === [] ? [404] : [405, $allowedMethods];
     }
 
     /**

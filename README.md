@@ -18,7 +18,7 @@
 
 Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
 
-- **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs under 5 µs of routing work at any size. Its URL matcher on its own is faster than Symfony's in every case measured, and faster than FastRoute's for routes with parameters and 404s from 200 routes up. See the [router comparison](benchmark/compare/README.md).
+- **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs under 5 µs of routing work at any size. Its URL matcher on its own is faster than Symfony's in every case measured, and faster than FastRoute's for routes with parameters and 404s from 200 routes up. In lean mode, `Router::match()` skips the request and response objects for the speed of a matcher-only router. See the [router comparison](benchmark/compare/README.md).
 - **Lean Footprint** — No dependencies. A request loads 20 small files (about 1,900 lines).
 - **High Concurrency** — Custom emitters + OpenSwoole handle 10k+ req/s.
 - **Zero War Story** — No imposed folder structure. Organise your code your way.
@@ -177,6 +177,44 @@ Router::group('/api/v1', function ($group) {
 ```
 
 Nested groups inherit the parent's prefix and middleware stack at the point of creation. Add middleware to a group **before** defining nested groups to ensure inheritance.
+
+## Lean mode
+
+`Router::handle()` builds a request and a response, runs middleware and calls the handler for you. If you don't need those, `Router::match()` only finds the route, as a matcher-only router such as FastRoute does, and you call the handler yourself. In a worker it's three to five times faster per request; see the [router comparison](benchmark/compare/README.md).
+
+```php
+// public/index.php
+Router::loadRoutes(__DIR__ . '/../routes.php', __DIR__ . '/../storage/cache/routes.php');
+
+$path = (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$route = Router::match($_SERVER['REQUEST_METHOD'], $path);
+
+switch ($route[0]) {
+    case 200:
+        [, [$class, $action], $params] = $route;
+        header('Content-Type: application/json');
+        echo json_encode((new $class())->{$action}(...$params));
+        break;
+    case 405:
+        http_response_code(405);
+        header('Allow: ' . implode(', ', $route[1]));
+        break;
+    default:
+        http_response_code(404);
+}
+```
+
+The result follows FastRoute's shape:
+
+| Result | When |
+|---|---|
+| `[200, $handler, $params, $middleware]` | A route matches. `$handler` is the closure or `[Controller::class, 'method']` you registered, and `$params` holds the placeholder values by name. |
+| `[404]` | No route matches the path. |
+| `[405, $allowedMethods]` | Routes match the path, but only under other methods. |
+
+- **It uses the same routes and caches** as `handle()`, including `loadRoutes()`, so you can switch between the two.
+- **Middleware isn't run.** The route's own middleware is returned in `$middleware`, so check it if you rely on it, for example for authentication. Middleware added with `addMiddleware()` belongs to a `Router` instance and isn't seen by `match()`.
+- **Pass the path only**, without the query string.
 
 ---
 

@@ -46,10 +46,10 @@ final class DromosMatcher implements Matcher
 
     public function match(string $method, string $path): array
     {
-        $match = $this->table->match($method, $path);
+        $match = $this->table->find($method, $path);
         if ($match === null) {
             return [$this->table->allowedMethods($path, $method) === [] ? 404 : 405, null, []];
         }
-        return [200, $this->handlers[$method][$match->url][1], $match->params];
+        return [200, $this->handlers[$method][$match[0]][1], $match[1]];
     }
 }

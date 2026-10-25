@@ -167,4 +167,19 @@ final class CompiledRoutesTest extends TestCase
     {
         return (new RouteCompiler())->compile(array_map(fn(array $list) => array_fill_keys($list, true), $urls));
     }
+
+    #[Test]
+    public function test_find_gives_what_match_does_as_plain_data(): void
+    {
+        $routes = (new RouteCompiler())->compile(['GET' => ['/a/{x}' => 1, '/a/b' => 1, '/c' => 1], 'POST' => ['/a/b' => 1]]);
+
+        foreach ([['GET', '/a/b'], ['GET', '/a/z'], ['GET', '/c'], ['POST', '/a/b'], ['GET', '/nope'], ['PUT', '/c']] as [$method, $path]) {
+            for ($lookup = 1; $lookup <= 2; $lookup++) {
+                $match = $routes->match($method, $path);
+                $found = $routes->find($method, $path);
+                $this->assertSame($match === null ? null : [$match->url, $match->params], $found === null ? null : [$found[0], $found[1]], "$method $path, lookup $lookup");
+            }
+        }
+        $this->assertSame(['/a/{x}', ['x' => 'b']], array_slice((array) $routes->find('GET', '/a/b'), 0, 2), 'the earlier parameterised route wins');
+    }
 }

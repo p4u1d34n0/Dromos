@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Dromos\Http\Emitter;
 
-use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\Stream;
-use Dromos\Http\Message\StreamInterface;
 use OpenSwoole\Http\Response as SwooleResponse;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Sends a Dromos response through an OpenSwoole HTTP response, for apps

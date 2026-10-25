@@ -2,8 +2,7 @@
 
 namespace Dromos\Traits;
 
-use Dromos\Http\Message\StreamInterface;
-use Dromos\Http\Message\MessageInterface;
+use Psr\Http\Message\StreamInterface;
 
 trait MessageTrait
 {

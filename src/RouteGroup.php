@@ -3,6 +3,7 @@
 namespace Dromos;
 
 use Dromos\Http\Middleware\MiddlewareInterface;
+use Psr\Http\Server\MiddlewareInterface as PsrMiddlewareInterface;
 
 /**
  * Route group with shared URL prefix and optional per-group middleware.
@@ -23,7 +24,7 @@ class RouteGroup
 {
     private string $prefix;
 
-    /** @var list<MiddlewareInterface|class-string<MiddlewareInterface>> */
+    /** @var list<MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface>> */
     private array $middleware = [];
 
     public function __construct(string $prefix)
@@ -34,13 +35,13 @@ class RouteGroup
     /**
      * Add middleware to this group. All routes registered within will inherit it.
      *
-     * Pass an instance, or a class name to have the middleware built only when
+     * Dromos or PSR-15 middleware. Pass an instance, or a class name to have the middleware built only when
      * a request reaches one of the group's routes (see Router::setRouteMiddleware()).
      *
-     * @param MiddlewareInterface|class-string<MiddlewareInterface> ...$middleware
+     * @param MiddlewareInterface|PsrMiddlewareInterface|class-string<MiddlewareInterface|PsrMiddlewareInterface> ...$middleware
      * @return self
      */
-    public function middleware(MiddlewareInterface|string ...$middleware): self
+    public function middleware(MiddlewareInterface|PsrMiddlewareInterface|string ...$middleware): self
     {
         foreach ($middleware as $mw) {
             $this->middleware[] = $mw;

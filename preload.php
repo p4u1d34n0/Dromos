@@ -17,11 +17,27 @@ declare(strict_types=1);
 
 (static function (): void {
     $src = __DIR__ . '/src/';
-    $autoload = static function (string $class) use ($src): void {
-        if (str_starts_with($class, 'Dromos\\')) {
-            $file = $src . str_replace('\\', '/', substr($class, strlen('Dromos\\'))) . '.php';
-            if (is_file($file)) {
-                require_once $file;
+
+    // The PSR interfaces Dromos implements: in the app's vendor directory once
+    // installed, or in Dromos's own when working on it
+    $vendor = is_dir(__DIR__ . '/../../psr/http-message') ? __DIR__ . '/../../' : __DIR__ . '/vendor/';
+    $directories = [
+        'Dromos\\'            => [$src],
+        'Psr\\Http\\Message\\' => [$vendor . 'psr/http-message/src/'],
+        'Psr\\Http\\Server\\'  => [$vendor . 'psr/http-server-handler/src/', $vendor . 'psr/http-server-middleware/src/'],
+    ];
+
+    $autoload = static function (string $class) use ($directories): void {
+        foreach ($directories as $prefix => $paths) {
+            if (!str_starts_with($class, $prefix)) {
+                continue;
+            }
+            foreach ($paths as $path) {
+                $file = $path . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+                if (is_file($file)) {
+                    require_once $file;
+                    return;
+                }
             }
         }
     };

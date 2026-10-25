@@ -2,21 +2,11 @@
 
 namespace Dromos\Http\Message;
 
-interface StreamInterface
+use Psr\Http\Message\StreamInterface as PsrStreamInterface;
+
+/**
+ * A PSR-7 stream. Kept so code written against Dromos 1.x still type-checks.
+ */
+interface StreamInterface extends PsrStreamInterface
 {
-    public function __toString(): string;
-    public function close(): void;
-    public function detach();
-    public function getSize(): ?int;
-    public function tell(): int;
-    public function eof(): bool;
-    public function isSeekable(): bool;
-    public function seek(int $offset, int $whence = SEEK_SET): void;
-    public function rewind(): void;
-    public function isWritable(): bool;
-    public function write(string $string): int;
-    public function isReadable(): bool;
-    public function read(int $length): string;
-    public function getContents(): string;
-    public function getMetadata(?string $key = null);
 }

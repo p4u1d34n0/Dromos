@@ -4,8 +4,10 @@ namespace Dromos\Http;
 
 use Dromos\Http\Message\ServerRequestInterface;
 use Dromos\Http\Message\Stream;
-use Dromos\Http\Message\StreamInterface;
-use Dromos\Http\Message\UriInterface;
+use InvalidArgumentException;
+use Psr\Http\Message\ServerRequestInterface as PsrServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 use Dromos\Traits\MessageTrait;
 
@@ -85,6 +87,33 @@ class Request implements ServerRequestInterface
         return $request;
     }
 
+    /**
+     * A Dromos request with everything a PSR-7 server request holds, such as
+     * one a PSR-15 middleware built with another library. A Dromos request is
+     * returned as it is.
+     */
+    public static function fromPsr(PsrServerRequestInterface $request): ServerRequestInterface
+    {
+        if ($request instanceof ServerRequestInterface) {
+            return $request;
+        }
+        $copy = new self();
+        $copy->method = $request->getMethod();
+        $copy->uri = $request->getUri();
+        $copy->requestTarget = $request->getRequestTarget();
+        $copy->protocolVersion = $request->getProtocolVersion();
+        $copy->headers = $request->getHeaders();
+        $copy->body = $request->getBody();
+        $copy->bodyLoaded = true;
+        $copy->serverParams = $request->getServerParams();
+        $copy->cookieParams = $request->getCookieParams();
+        $copy->queryParams = $request->getQueryParams();
+        $copy->uploadedFiles = $request->getUploadedFiles();
+        $copy->parsedBody = $request->getParsedBody();
+        $copy->attributes = $request->getAttributes();
+        return $copy;
+    }
+
     // -- RequestInterface methods (from PSR-7) --
 
     public function getRequestTarget(): string
@@ -114,10 +143,19 @@ class Request implements ServerRequestInterface
     {
         return $this->uri;
     }
+    /**
+     * With $preserveHost false, the Host header becomes the new URI's host,
+     * if it has one. With true, it's set only if the request has none.
+     */
     public function withUri(UriInterface $uri, bool $preserveHost = false): static
     {
         $clone = clone $this;
         $clone->uri = $uri;
+        $host = $uri->getHost();
+        if ($host !== '' && (!$preserveHost || $clone->getHeaderLine('Host') === '')) {
+            $port = $uri->getPort();
+            $clone->putHeader('Host', [$port === null ? $host : "$host:$port"]);
+        }
         return $clone;
     }
 
@@ -166,8 +204,11 @@ class Request implements ServerRequestInterface
         $this->loadBody();
         return $this->parsedBody;
     }
-    public function withParsedBody(null|array|object $data): static
+    public function withParsedBody($data): static
     {
+        if ($data !== null && !is_array($data) && !is_object($data)) {
+            throw new InvalidArgumentException('The parsed body must be null, an array or an object, got ' . get_debug_type($data) . '.');
+        }
         $this->loadBody();
         $clone = clone $this;
         $clone->parsedBody = $data;

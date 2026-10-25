@@ -2,8 +2,8 @@
 
 namespace Dromos\Http\Emitter;
 
-use Dromos\Http\Message\ResponseInterface;
 use Dromos\Http\Message\Stream;
+use Psr\Http\Message\ResponseInterface;
 
 
 /**

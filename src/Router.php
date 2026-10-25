@@ -79,8 +79,7 @@ class Router implements RequestHandlerInterface
     {
         self::$routes = [];
         self::$routeMiddleware = [];
-        self::disableCache();
-        self::forgetMatchTable();
+        self::disableCache(); // also forgets the match table
         self::$controllerResolver = null;
         self::$invoker = null;
     }

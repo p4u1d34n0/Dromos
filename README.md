@@ -608,7 +608,8 @@ Router::group('/admin', function ($group) {
 
 The first request runs `routes.php` and stores the routes. Every later request dispatches straight from the cache: `routes.php` doesn't run, and nothing is registered or compiled. Under PHP-FPM, a request with 2,000 routes takes about the same time as one with 20.
 
-- **It rebuilds itself when `routes.php` changes** (its size, modification time or inode). If `routes.php` includes other route files, delete the cache file when you deploy changes to them.
+- **It rebuilds itself when `routes.php` changes, as soon as PHP would notice changed code.** While opcache holds both files as current, `routes.php` isn't even checked, so a request touches no file. A change counts when opcache revalidates `routes.php` (every `opcache.revalidate_freq` seconds, with `opcache.validate_timestamps` on), or when opcache is reset or the file invalidated, as with `opcache.validate_timestamps` off. Without opcache, `routes.php` is checked on every request (its size, modification time and inode).
+- **If `routes.php` includes other route files,** delete the cache file when you deploy changes to them.
 - **Only controller routes can be stored.** Closures and middleware *instances* can't be, so if `routes.php` defines any, it simply runs on every request. Give middleware by class name to keep them cacheable; they're built by the controller resolver when a request first reaches one of their routes.
 - **Routes registered before `loadRoutes()`** mean the file runs on every request, so the order of all routes is kept. Routes added after it work as normal.
 - Use a different file from `enableCache()` below.

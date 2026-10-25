@@ -44,9 +44,9 @@ final class RouteCacheFile
     public function remember(array $routes, Closure $compile): CompiledRoutes
     {
         $signature = CachedRoutes::signatureOf($routes);
-        $cached = $this->load();
-        if ($cached !== null && $cached->signature === $signature) {
-            return $cached->table;
+        $current = $this->current($signature);
+        if ($current !== null) {
+            return $current[0];
         }
 
         $table = $compile($routes);
@@ -59,29 +59,64 @@ final class RouteCacheFile
      */
     public function load(): ?CachedRoutes
     {
-        if (!$this->isPhpFile()) {
+        $data = $this->read(false);
+        if ($data === null) {
+            return null;
+        }
+        return new CachedRoutes($data['signature'], CompiledRoutes::fromArray($data['table']), $data['handlers'], $data['middleware']);
+    }
+
+    /**
+     * The compiled table, handlers and middleware stored for routes with this
+     * signature, or null if the file holds no usable entry for them. Given
+     * null, for a cache pinned by opcache (see isPinnedByOpcache()), it
+     * returns whatever routes the file holds.
+     *
+     * Unlike load(), this builds no CachedRoutes: Router::loadRoutes() calls
+     * it on every request, and the object would cost more than reading the
+     * file from opcache.
+     *
+     * @return array{0: CompiledRoutes, 1: array<string, array<string, array{0:class-string,1:string}>>, 2: array<string, list<class-string>>}|null
+     */
+    public function current(?string $signature): ?array
+    {
+        $data = $this->read($signature === null);
+        if ($data === null || ($signature !== null && $data['signature'] !== $signature)) {
+            return null;
+        }
+        return [CompiledRoutes::fromArray($data['table']), $data['handlers'], $data['middleware']];
+    }
+
+    /**
+     * The file's data, or null if it's missing, corrupt, outdated or a
+     * legacy (JSON) file.
+     *
+     * Only save() writes a file with this format version, and it writes every
+     * entry at once (see save()), so a file with the version and a signature
+     * holds the rest; checking each entry would cost more than reading it.
+     *
+     * @param bool $pinned The file is known to be in opcache, so it's one of ours
+     *
+     * @return array{signature: string, table: array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}>, handlers: array<string, array<string, array{0:class-string,1:string}>>, middleware: array<string, list<class-string>>}|null
+     */
+    private function read(bool $pinned): ?array
+    {
+        if (!$pinned && !$this->isPhpFile()) {
             return null;
         }
 
         try {
-            $data = (static fn(string $file): mixed => require $file)($this->path);
+            $data = require $this->path;
         } catch (Throwable) {
             return null; // e.g. a corrupt file; it will be rewritten
         }
 
-        if (
-            !is_array($data)
-            || ($data['version'] ?? null) !== self::FORMAT_VERSION
-            || !is_string($data['signature'] ?? null)
-            || !is_array($data['table'] ?? null)
-            || !is_array($data['handlers'] ?? null)
-            || !is_array($data['middleware'] ?? null)
-        ) {
+        if (!is_array($data) || ($data['version'] ?? null) !== self::FORMAT_VERSION || !is_string($data['signature'] ?? null)) {
             return null;
         }
 
         /** @var array{signature: string, table: array<string, array{exact: array<string, int>, prefixes: array<string, string[]>, parameterised: array<int, array{0:string,1:string[],2:int}>}>, handlers: array<string, array<string, array{0:class-string,1:string}>>, middleware: array<string, list<class-string>>} $data */
-        return new CachedRoutes($data['signature'], CompiledRoutes::fromArray($data['table']), $data['handlers'], $data['middleware']);
+        return $data;
     }
 
     /**
@@ -111,6 +146,45 @@ final class RouteCacheFile
 
         $this->invalidateOpcache();
         return true;
+    }
+
+    /**
+     * True if opcache holds this file and the routes file it was built from,
+     * as current: PHP would run the routes file as it was when this cache was
+     * built, so it needn't be checked.
+     *
+     * opcache decides what's current as it does for all code. With
+     * opcache.validate_timestamps on, it checks a file's timestamp at most
+     * every opcache.revalidate_freq seconds; with it off, as in most
+     * production setups, a file stays current until it's invalidated or
+     * opcache is reset. Either way, Dromos sees a changed routes file when
+     * PHP would see changed code.
+     *
+     * It also means the file was read before, so it's one of ours (see
+     * isPhpFile()).
+     */
+    public function isPinnedByOpcache(string $routesFile): bool
+    {
+        return function_exists('opcache_is_script_cached')
+            && @opcache_is_script_cached($this->path)
+            && @opcache_is_script_cached($routesFile);
+    }
+
+    /**
+     * Compile the routes file into opcache, without running it, so the next
+     * requests find this cache pinned (see isPinnedByOpcache()). For after
+     * the routes file was checked and this cache found current: a cache hit
+     * doesn't run the routes file, so opcache wouldn't otherwise hold it.
+     */
+    public function pinWith(string $routesFile): void
+    {
+        if (
+            function_exists('opcache_compile_file')
+            && @opcache_is_script_cached($this->path)
+            && !@opcache_is_script_cached($routesFile)
+        ) {
+            @opcache_compile_file($routesFile);
+        }
     }
 
     public function clear(): void

@@ -9,6 +9,10 @@
         <testsuite name="Dromos">
             <directory>tests</directory>
         </testsuite>
+        <!-- The PSR-17 compliance suite, run against HttpFactory (see tests/bootstrap.php) -->
+        <testsuite name="PSR-17">
+            <directory>vendor/http-interop/http-factory-tests/test</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

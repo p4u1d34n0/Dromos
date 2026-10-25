@@ -2,11 +2,11 @@
 
 # Why Choose Dromos?
 
-> Dromos is a lightweight PHP micro-service library that implements PSR-7 and PSR-15, designed for maximum flexibility and performance. It offers fast routing, route caching, middleware support, and a minimal emitter layer to send responses to any PHP SAPI or server environment.
+> Dromos is a lightweight PHP micro-service library that implements PSR-7, PSR-15 and PSR-17, designed for maximum flexibility and performance. It offers fast routing, route caching, middleware support, and a minimal emitter layer to send responses to any PHP SAPI or server environment.
 
 ## Key Features
 
-* **PSR-7 / PSR-15** — Requests, responses, streams and URIs implement the PSR-7 interfaces, and PSR-15 middleware from any package runs alongside Dromos middleware. The only dependencies are the PSR interface packages.
+* **PSR-7 / PSR-15 / PSR-17** — Requests, responses, streams and URIs implement PSR-7 and pass its compliance suite, PSR-15 middleware from any package runs alongside Dromos middleware, and `HttpFactory` implements PSR-17. The only dependencies are the PSR interface packages.
 * **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus regexes grouped by path prefix, so lookups take the same time with 20 routes or 2,000.
 * **Route Groups** — Group routes under a shared prefix with per-group middleware.
 * **Route Caching** — Store the compiled route table in an opcache-friendly PHP file that refreshes itself when routes change.
@@ -260,6 +260,17 @@ To use the router where a PSR-15 request handler is expected, for example by a P
 ```php
 $handler = new Dromos\Http\PsrRequestHandler(new Router());
 ```
+
+## PSR-17 Factories
+
+`Dromos\Http\HttpFactory` implements every PSR-17 factory: requests, responses, server requests, streams, uploaded files and URIs. Give it to PSR-15 middleware that asks for a factory, so the responses it builds are Dromos responses:
+
+```php
+$factory = new Dromos\Http\HttpFactory();
+$router->addMiddleware(new SomePackage\Psr15Middleware(responseFactory: $factory, streamFactory: $factory));
+```
+
+Dromos's messages and factories pass the community compliance suites, [php-http/psr7-integration-tests](https://github.com/php-http/psr7-integration-tests) and [http-interop/http-factory-tests](https://github.com/http-interop/http-factory-tests), which run with the rest of the tests.
 
 ## Built-in Middleware
 

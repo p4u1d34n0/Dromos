@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 300" role="img" aria-labelledby="t d">
+  <title id="t">A request to a route with a parameter, 2,000 routes, long-running worker</title>
+  <desc id="d">µs per request on a log scale: Dromos lean 0.83, Symfony 1.36, Dromos full 2.43, FastRoute 16.7, Slim 29.1, Laravel 41.1, Mezzio 141, Flight 1,373.</desc>
+  <style>
+    svg { --bg: #ffffff; --fg: #1d2329; --muted: #5b6670; --rule: #dde2e6; --us: #0b6e72; --other: #b9c3cb; }
+    @media (prefers-color-scheme: dark) { svg { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --rule: #30363d; --us: #4fc2c5; --other: #47525c; } }
+    .bg { fill: var(--bg); }
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: var(--fg); }
+    .h { font-size: 14px; font-weight: 600; }
+    .sub, .tick { fill: var(--muted); font-size: 11px; }
+    .grid { stroke: var(--rule); stroke-width: 1; }
+    .bar { fill: var(--other); }
+    .us { fill: var(--us); }
+    .val { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }
+  </style>
+  <rect class="bg" width="672" height="300" rx="8"/>
+  <text class="h" x="16" y="24">Route with a parameter, 2,000 routes, worker</text>
+  <text class="sub" x="16" y="42">µs per request, log scale, lower is better · Apple M3 Pro, PHP 8.4.4, opcache</text>
+  <!-- x = 130 + 117.5 × (log10(µs) + 1) -->
+  <g transform="translate(0 30)">
+    <line class="grid" x1="130" y1="26" x2="130" y2="242"/><text class="tick" x="130" y="258" text-anchor="middle">0.1</text>
+    <line class="grid" x1="247.5" y1="26" x2="247.5" y2="242"/><text class="tick" x="247.5" y="258" text-anchor="middle">1</text>
+    <line class="grid" x1="365" y1="26" x2="365" y2="242"/><text class="tick" x="365" y="258" text-anchor="middle">10</text>
+    <line class="grid" x1="482.5" y1="26" x2="482.5" y2="242"/><text class="tick" x="482.5" y="258" text-anchor="middle">100</text>
+    <line class="grid" x1="600" y1="26" x2="600" y2="242"/><text class="tick" x="600" y="258" text-anchor="middle">1,000</text>
+    <text x="122" y="42" text-anchor="end">Dromos lean</text><rect class="us" x="130" y="30" width="108.0" height="18"/><text class="val" x="244" y="43">0.83</text>
+    <text x="122" y="69" text-anchor="end">Symfony</text><rect class="bar" x="130" y="57" width="133.2" height="18"/><text class="val" x="269" y="70">1.36</text>
+    <text x="122" y="96" text-anchor="end">Dromos full</text><rect class="us" x="130" y="84" width="162.8" height="18"/><text class="val" x="299" y="97">2.43</text>
+    <text x="122" y="123" text-anchor="end">FastRoute</text><rect class="bar" x="130" y="111" width="261.2" height="18"/><text class="val" x="397" y="124">16.7</text>
+    <text x="122" y="150" text-anchor="end">Slim</text><rect class="bar" x="130" y="138" width="289.5" height="18"/><text class="val" x="425" y="151">29.1</text>
+    <text x="122" y="177" text-anchor="end">Laravel</text><rect class="bar" x="130" y="165" width="307.1" height="18"/><text class="val" x="443" y="178">41.1</text>
+    <text x="122" y="204" text-anchor="end">Mezzio</text><rect class="bar" x="130" y="192" width="370.0" height="18"/><text class="val" x="506" y="205">141</text>
+    <text x="122" y="231" text-anchor="end">Flight</text><rect class="bar" x="130" y="219" width="486.2" height="18"/><text class="val" x="622" y="232">1,373</text>
+  </g>
+</svg>

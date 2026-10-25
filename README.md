@@ -1,29 +1,48 @@
 <img src="http://dromos.pauldean.me/Dromos.png" alt="Dromos - Superlight PHP Router" height="300px" style="border-radius:30px">
 
-# Why Choose Dromos?
+# Dromos
 
-> Dromos is a lightweight PHP micro-service library that implements PSR-7, PSR-15 and PSR-17, designed for maximum flexibility and performance. It offers fast routing, route caching, middleware support, and a minimal emitter layer to send responses to any PHP SAPI or server environment.
+**A PHP router for fast APIs.** In the [router comparison](benchmark/compare/README.md), Dromos is faster than Symfony Routing, FastRoute, Laravel's router, Flight, Slim and Mezzio in every in-process test at 2,000 routes. It loads 5 files to route a request, and its only dependencies are the PSR interface packages.
 
-## Key Features
+```php
+Router::Get('/users/{id}', [UserController::class, 'show']);
 
-* **PSR-7 / PSR-15 / PSR-17** — Requests, responses, streams and URIs implement PSR-7 and pass its compliance suite, PSR-15 middleware from any package runs alongside Dromos middleware, and `HttpFactory` implements PSR-17. The only dependencies are the PSR interface packages.
-* **Fast Routing** — Expressive routes with parameters, route groups, and HTTP method support. Routes compile into a hash map plus regexes grouped by path prefix, so lookups take the same time with 20 routes or 2,000.
-* **Route Groups** — Group routes under a shared prefix with per-group middleware.
-* **Route Caching** — Store the compiled route table in an opcache-friendly PHP file that refreshes itself when routes change.
-* **Middleware Pipeline** — Global and per-route middleware with PSR-15 style handler chains. Ships with CORS, Auth, and Rate Limiting middleware.
-* **Input Validation** — Built-in validator with pipe-delimited rules for API input.
-* **JSON-First API Design** — JSON request body parsing, JSON error responses, and response helpers.
-* **Minimal Emitter Layer** — `Emitter` sends responses under PHP-FPM, and `SwooleEmitter` under OpenSwoole. Implement `EmitterInterface` to target other runtimes.
-* **Micro-Service Ready** — Perfect for REST, RPC, or event-driven micro-services with zero framework magic.
+$route = Router::match($_SERVER['REQUEST_METHOD'], $path); // [200, $handler, $params, $middleware]
+```
 
-Frameworks like Laravel and Symfony excel at monolithic apps but introduce significant overhead:
+## The numbers
 
-- **Fast** — Faster than Flight, Laravel's router, Slim and Mezzio in every case measured, from 20 to 2,000 routes, in worker mode and under PHP-FPM, in-process and over HTTP. With `Router::loadRoutes()`, a PHP-FPM request costs under 5 µs of routing work at any size. Its URL matcher on its own is faster than Symfony's in every case measured, and faster than FastRoute's for routes with parameters and 404s from 200 routes up. In lean mode, `Router::match()` skips the request and response objects for the speed of a matcher-only router. See the [router comparison](benchmark/compare/README.md).
-- **Lean Footprint** — No dependencies beyond the PSR interfaces. A request loads 25 small files, 3,410 lines, of which 1,128 are the PSR-7 interfaces, mostly docblocks (94 lines of code). In lean mode a request loads 5 files, 820 lines.
-- **High Concurrency** — Custom emitters + OpenSwoole handle 10k+ req/s.
-- **Zero War Story** — No imposed folder structure. Organise your code your way.
+The time each router spends on one request, in µs: the median of 5 runs on an Apple M3 Pro with PHP 8.4.4 and opcache. Lower is better. FastRoute and Symfony only find the route; Dromos's lean mode does the same, then calls the controller.
 
-Implement OpenSwoole and you can start building micro-services that can rival Node.js or Go in performance, with PHP's robust ecosystem.
+<img src="docs/benchmark-worker-param-2000.svg" alt="Route with a parameter, 2,000 routes, worker: Dromos lean 0.83 µs, Symfony 1.36, Dromos full 2.43, FastRoute 16.7, Slim 29.1, Laravel 41.1, Mezzio 141, Flight 1,373" width="672">
+
+| Route with a parameter | Worker, 20 routes | Worker, 2,000 routes | PHP-FPM cached, 20 routes | PHP-FPM cached, 2,000 routes | Files loaded |
+|---|---|---|---|---|---|
+| **Dromos lean** | **0.81** | **0.83** | **1.73** | **1.74** | **5** |
+| **Dromos** | **2.40** | **2.43** | **4.46** | **4.45** | **25** |
+| Symfony Routing | 0.87 | 1.36 | 1.66 | 2.16 | 10 |
+| FastRoute | 0.61 | 16.7 | 2.21 | 20.5 | 10 |
+| Laravel | 39.9 | 41.1 | 63.8 | 66.3 | 75 |
+| Slim | 11.1 | 29.1 | 47.1 | 1,653 | 68 |
+| Mezzio | 11.5 | 141 | 72.6 | 2,925 | 103 |
+| Flight | 25.8 | 1,373 | 74.4* | 4,889* | 10 |
+
+"Worker" is a long-running server such as OpenSwoole, with routes registered once. "PHP-FPM cached" is one request in a fresh PHP process that reads its routes from the router's cache. \* Flight has no route cache. The [router comparison](benchmark/compare/README.md) has every test, over HTTP too, with the run-to-run spread and every sample.
+
+## Why Dromos
+
+- **Route count doesn't change its speed.** Exact paths are a hash lookup. Routes with placeholders are grouped by their static prefix (`/users` for `/users/{id}`), so a request tests only the few routes that could match. Dromos takes the same time with 20 routes as with 2,000. FastRoute combines its routes into regexes of about ten routes each and tries them in turn, so at 2,000 routes it is 27 times slower than at 20.
+- **Two modes, one route table.** `Router::match()` only finds the route, as FastRoute does, for APIs that need no middleware. `Router::handle()` builds PSR-7 requests and responses and runs middleware. Both read the same routes and caches, so you can start lean and add middleware later, or use both in one app.
+- **A route cache that stays correct.** `Router::loadRoutes()` stores your compiled routes in a PHP file that opcache keeps in memory. While opcache holds both that file and your routes file as current, a request touches no file at all. The cache rebuilds itself when your routes change, at the moment PHP would notice changed code, so it never serves routes that PHP itself wouldn't.
+- **Small enough to read.** Lean mode loads 5 files, 834 lines, in 368 KB of memory. Full mode, with PSR-7 messages and middleware, loads 25 files and 3,424 lines, of which 1,128 are the PSR-7 interfaces, mostly docblocks. Laravel's router loads 75 files and 26,248 lines.
+- **Standard where it counts.** Requests, responses, streams and URIs pass the community [PSR-7 integration tests](https://github.com/php-http/psr7-integration-tests), `HttpFactory` passes the [PSR-17 factory tests](https://github.com/http-interop/http-factory-tests), and PSR-15 middleware from any package runs alongside Dromos middleware.
+- **Built for PHP-FPM and workers.** Under PHP-FPM, preloading and the route cache keep routing to about 1.7 µs a request in lean mode and 4.5 µs in full mode, at any route count. Under OpenSwoole, the route table is built once per worker and `SwooleEmitter` sends the responses.
+
+## When to use something else
+
+- **With few routes, FastRoute and Symfony are slightly faster in some tests.** At 20 routes, FastRoute leads routes with parameters and 404s by up to 0.33 µs, and Symfony leads a cached PHP-FPM request by 0.07 µs. From 200 routes, lean mode is the fastest in every test bar one: a cached PHP-FPM request, where Symfony is 0.04 µs ahead, inside the run-to-run spread.
+- **If you want a full framework,** with an ORM, templating and a container, use Laravel or Symfony. Dromos is a router with middleware, request validation and response helpers, and leaves the rest to you.
+- **Routing is rarely your bottleneck.** These are microseconds a request, and one database query takes far longer. The difference shows in APIs that serve many small requests, and in how much a request costs your servers.
 
 ## Installation
 
@@ -31,7 +50,17 @@ Implement OpenSwoole and you can start building micro-services that can rival No
 composer require pauldeano/dromos
 ```
 
-Requires **PHP 8.2+** with zero external dependencies.
+Requires **PHP 8.2+**. The only dependencies are the four PSR interface packages: `psr/http-message`, `psr/http-server-handler`, `psr/http-server-middleware` and `psr/http-factory`.
+
+## Features
+
+- **Routing:** route parameters, groups with a shared prefix and middleware, resource routes, controllers built by your own container if you like, and a 405 with an `Allow` list when only the method is wrong.
+- **Lean mode:** `Router::match()` returns `[200, $handler, $params, $middleware]`, `[404]` or `[405, $allowedMethods]`, the shape FastRoute uses.
+- **Route caching:** a cached routes file for controller routes, and a compiled table cache for routes with closures. Both rebuild themselves.
+- **Middleware:** global, per route and per group, Dromos or PSR-15. CORS, authentication and rate limiting are included.
+- **Requests and responses:** PSR-7 messages, JSON body parsing, JSON error responses and response helpers.
+- **Input validation:** pipe-delimited rules such as `required|email`.
+- **Emitters:** `Emitter` for PHP-FPM and `SwooleEmitter` for OpenSwoole. Implement `EmitterInterface` for other runtimes.
 
 ---
 
@@ -180,7 +209,7 @@ Nested groups inherit the parent's prefix and middleware stack at the point of c
 
 ## Lean mode
 
-`Router::handle()` builds a request and a response, runs middleware and calls the handler for you. If you don't need those, `Router::match()` only finds the route, as a matcher-only router such as FastRoute does, and you call the handler yourself. In a worker it's three to five times faster per request; see the [router comparison](benchmark/compare/README.md).
+`Router::handle()` builds a request and a response, runs middleware and calls the handler for you. If you don't need those, `Router::match()` only finds the route, as a matcher-only router such as FastRoute does, and you call the handler yourself. In a worker it's three to six times faster per request; see the [router comparison](benchmark/compare/README.md).
 
 ```php
 // public/index.php

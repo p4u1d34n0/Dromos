@@ -1,6 +1,6 @@
 {
     "name": "pauldeano/dromos",
-    "description": "Lightweight PHP Router",
+    "description": "A small, fast PHP router for APIs: PSR-7, PSR-15 and PSR-17, with a lean mode and an opcache route cache",
     "type": "library",
     "license": "MIT",
     "autoload": {

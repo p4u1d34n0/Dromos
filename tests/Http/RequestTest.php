@@ -93,13 +93,46 @@ final class RequestTest extends TestCase
     }
 
     #[Test]
-    public function test_invalid_json_leaves_the_post_fields_as_the_parsed_body(): void
+    public function test_invalid_json_gives_no_parsed_body(): void
     {
         $_POST = [];
-        $request = $this->requestWithInput('{not json', ['CONTENT_TYPE' => 'application/json']);
+        $request = $this->requestWithInput('{not json', ['REQUEST_METHOD' => 'POST', 'CONTENT_TYPE' => 'application/json']);
 
-        $this->assertSame([], $request->getParsedBody());
+        $this->assertNull($request->getParsedBody());
         $this->assertSame('{not json', (string) $request->getBody());
+    }
+
+    #[Test]
+    public function test_only_a_form_or_multipart_post_has_the_post_fields_as_its_parsed_body(): void
+    {
+        $_POST = ['name' => 'Ada'];
+        $cases = [
+            [['REQUEST_METHOD' => 'POST', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded'], ['name' => 'Ada']],
+            [['REQUEST_METHOD' => 'POST', 'CONTENT_TYPE' => 'Multipart/Form-Data; boundary=x'], ['name' => 'Ada']],
+            [['REQUEST_METHOD' => 'GET', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded'], null],
+            [['REQUEST_METHOD' => 'POST', 'CONTENT_TYPE' => 'text/plain'], null],
+            [['REQUEST_METHOD' => 'POST'], null],
+        ];
+        try {
+            foreach ($cases as [$server, $expected]) {
+                $this->assertSame($expected, $this->requestWithInput('', $server)->getParsedBody(), json_encode($server));
+            }
+        } finally {
+            $_POST = [];
+        }
+    }
+
+    #[Test]
+    public function test_replacing_the_body_or_parsed_body_leaves_the_request_unread(): void
+    {
+        $request = $this->requestWithInput('{"a":1}', ['REQUEST_METHOD' => 'POST', 'CONTENT_TYPE' => 'application/json']);
+
+        $request->withBody(new Stream('other'));
+        $request->withParsedBody(['b' => 2]);
+        $this->assertSame(2, CountingRequest::$reads, 'each copy read the body for itself');
+
+        $this->assertSame(['a' => 1], $request->getParsedBody(), 'the original still reads its own body');
+        $this->assertSame(3, CountingRequest::$reads);
     }
 
     #[Test]

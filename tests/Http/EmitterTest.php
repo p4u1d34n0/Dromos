@@ -6,7 +6,7 @@ namespace Dromos\Tests\Http;
 
 use Dromos\Http\Emitter\Emitter;
 use Dromos\Http\Response;
-use Dromos\Tests\Support\ResourceStream;
+use Dromos\Http\Message\ResourceStream;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -75,7 +75,7 @@ final class EmitterTest extends TestCase
     public function test_it_writes_a_non_memory_stream_in_full_from_the_start(): void
     {
         $content = str_repeat('abcdefghij', 2000);
-        $stream = new ResourceStream($content);
+        $stream = ResourceStream::fromString($content);
         $stream->read(100); // a body that was already partly read
 
         $this->assertSame($content, $this->emitted((new Response())->withBody($stream)));

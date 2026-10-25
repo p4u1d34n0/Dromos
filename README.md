@@ -27,7 +27,26 @@ The time each router spends on one request, in µs: the median of 5 runs on an A
 | Mezzio | 11.5 | 141 | 72.6 | 2,925 | 103 |
 | Flight | 25.8 | 1,373 | 74.4* | 4,889* | 10 |
 
-"Worker" is a long-running server such as OpenSwoole, with routes registered once. "PHP-FPM cached" is one request in a fresh PHP process that reads its routes from the router's cache. \* Flight has no route cache. The [router comparison](benchmark/compare/README.md) has every test, over HTTP too, with the run-to-run spread and every sample.
+\* Flight has no route cache. The [router comparison](benchmark/compare/README.md) has every test, over HTTP too, with the run-to-run spread and every sample.
+
+### How it's measured
+
+- **The same routes for every router.** 5, 50 or 500 resources with four controller routes each, giving 20, 200 or 2,000 routes: `GET /res{n}`, `GET /res{n}/{id}`, `GET /res{n}/{id}/items/{item}` and `POST /res{n}`. The tests above request a route of the last resource registered, the worst case for routers that try their routes in turn. Every handler returns a small JSON body.
+- **Checked before timed.** Each router must return the expected status and body for every request in the set, or the run stops.
+- **Each router as its documentation recommends,** with its own route cache where it has one. FastRoute and Symfony Routing are matchers only, so their adapters add the least glue a front controller needs: create the controller, pass the parameters, return the JSON. Laravel is `illuminate/routing` on its own, without the rest of the framework. Both choices favour the other routers.
+- **Worker:** the router is booted once, then one request after another is timed in a loop.
+- **PHP-FPM cached:** every iteration creates a new router, loads its routes from its cache and handles one request. It runs in one process with opcache on, so the cost of loading the router's files isn't counted. The HTTP tests in the [router comparison](benchmark/compare/README.md) count that, with real requests to PHP's built-in server.
+- **Timing:** each test runs for 5 rounds of 60 ms, timed with `hrtime()`, after one untimed call per round. Each script runs 5 times, each in a fresh process, and a result is the median across runs of each run's median.
+- **Machine:** a MacBook Pro with an Apple M3 Pro, macOS, PHP 8.4.4 with opcache, no JIT and no Xdebug. The package versions are in the [report](benchmark/compare/results/2026-10-25-darwin-arm64-php8.4.4/report.md).
+
+To run it yourself, which takes about 90 minutes and needs `ab` (ApacheBench):
+
+```bash
+cd benchmark/compare
+composer install
+php run.php
+php report.php results/<name>
+```
 
 ## Why Dromos
 

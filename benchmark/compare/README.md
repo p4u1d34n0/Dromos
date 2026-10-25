@@ -66,27 +66,27 @@ They take `--routers=dromos,slim`, `--sizes=5,50,500`, `--budget=` or `--request
 
 ## Results
 
-From [`results/2026-10-24-darwin-arm64-php8.4.4`](results/2026-10-24-darwin-arm64-php8.4.4/report.md): a MacBook Pro (Apple M3 Pro, 11 cores), PHP 8.4.4 with opcache and no JIT, 5 in-process and matcher runs, and 3 HTTP runs. The numbers are µs per request, the median across runs; lower is better. The [full report](results/2026-10-24-darwin-arm64-php8.4.4/report.md) has every row at 20, 200 and 2,000 routes, with the run-to-run spread, and [`dataset.csv`](results/2026-10-24-darwin-arm64-php8.4.4/dataset.csv) has every sample. Run it on your own hardware before quoting it.
+From [`results/2026-10-25-darwin-arm64-php8.4.4`](results/2026-10-25-darwin-arm64-php8.4.4/report.md): Dromos 1.4.0 with the faster cache loading from #42, on a MacBook Pro (Apple M3 Pro, 11 cores), PHP 8.4.4 with opcache and no JIT. It has 5 in-process and matcher runs, and 3 HTTP runs. The numbers are µs per request, the median across runs; lower is better. The [full report](results/2026-10-25-darwin-arm64-php8.4.4/report.md) has every row at 20, 200 and 2,000 routes, with the run-to-run spread, and [`dataset.csv`](results/2026-10-25-darwin-arm64-php8.4.4/dataset.csv) has every sample. Run it on your own hardware before quoting it. The [earlier dataset](results/2026-10-24-darwin-arm64-php8.4.4/report.md), from before the PSR-7 work and #42, is kept for comparison.
 
 ### In-process, 2,000 routes
 
 | | Dromos | Dromos lean | Flight | Laravel | Slim | Mezzio | FastRoute¹ | Symfony¹ |
 |---|---|---|---|---|---|---|---|---|
-| Worker: static route | 1.53 | 0.29 | 1,404 | 38.2 | 10.6 | 134 | 0.35 | 0.63 |
-| Worker: route with a parameter | 2.33 | 0.82 | 1,398 | 41.4 | 31.9 | 146 | 18.7 | 1.38 |
-| Worker: 404 | 2.62 | 0.73 | 3,015 | 35,542 | 32.4 | 30.1 | 17.0 | 1.29 |
-| PHP-FPM: register, then one request | 1,040 | 1,028 | 4,977 | 11,383 | 34,716 | 35,867 | 34,432 | 6,336 |
-| PHP-FPM with route cache | 4.62 | 2.10 | 5,001² | 71.2 | 1,717 | 3,396 | 22.3 | 2.19 |
+| Worker: static route | 1.65 | 0.29 | 1,386 | 37.2 | 10.4 | 128 | 0.34 | 0.62 |
+| Worker: route with a parameter | 2.43 | 0.83 | 1,373 | 41.1 | 29.1 | 141 | 16.7 | 1.36 |
+| Worker: 404 | 2.68 | 0.74 | 2,988 | 33,561 | 31.3 | 28.0 | 15.4 | 1.26 |
+| PHP-FPM: register, then one request | 1,033 | 1,032 | 4,930 | 11,070 | 33,396 | 33,894 | 31,877 | 5,592 |
+| PHP-FPM with route cache | 4.45 | 1.74 | 4,889² | 66.3 | 1,653 | 2,925 | 20.5 | 2.16 |
 
 ### In-process, 20 routes
 
 | | Dromos | Dromos lean | Flight | Laravel | Slim | Mezzio | FastRoute¹ | Symfony¹ |
 |---|---|---|---|---|---|---|---|---|
-| Worker: static route | 1.54 | 0.29 | 24.0 | 37.8 | 10.3 | 11.3 | 0.34 | 0.62 |
-| Worker: route with a parameter | 2.43 | 0.82 | 25.8 | 40.5 | 11.2 | 11.7 | 0.62 | 0.88 |
-| Worker: 404 | 2.57 | 0.74 | 39.8 | 412 | 12.1 | 9.42 | 0.42 | 0.79 |
-| PHP-FPM: register, then one request | 16.3 | 13.5 | 76.1 | 165 | 65.2 | 113 | 25.6 | 54.2 |
-| PHP-FPM with route cache | 4.57 | 2.09 | 76.2² | 66.0 | 47.3 | 73.4 | 2.22 | 1.69 |
+| Worker: static route | 1.63 | 0.29 | 24.0 | 37.3 | 10.2 | 10.9 | 0.33 | 0.62 |
+| Worker: route with a parameter | 2.40 | 0.81 | 25.8 | 39.9 | 11.1 | 11.5 | 0.61 | 0.87 |
+| Worker: 404 | 2.66 | 0.73 | 39.1 | 404 | 12.0 | 9.25 | 0.40 | 0.78 |
+| PHP-FPM: register, then one request | 16.2 | 13.2 | 74.3 | 163 | 64.1 | 111 | 25.7 | 54.4 |
+| PHP-FPM with route cache | 4.46 | 1.73 | 74.4² | 63.8 | 47.1 | 72.6 | 2.21 | 1.66 |
 
 ¹ Matcher only, as described above. ² Flight has no route cache.
 
@@ -97,24 +97,24 @@ The URL matchers alone, read from their compiled caches, in µs per match:
 | | Routes | Dromos | FastRoute | Symfony |
 |---|---|---|---|---|
 | Worker: static route | 20 | 0.19 | 0.19 | 0.49 |
-| Worker: route with a parameter | 20 | 0.53 | 0.43 | 0.71 |
-| Worker: 404 | 20 | 0.70 | 0.36 | 0.78 |
-| PHP-FPM with route cache | 20 | 1.25 | 1.98 | 1.50 |
-| Worker: static route | 2,000 | 0.20 | 0.19 | 0.49 |
-| Worker: route with a parameter | 2,000 | 0.54 | 15.4 | 1.19 |
-| Worker: 404 | 2,000 | 0.70 | 14.8 | 1.25 |
-| PHP-FPM with route cache | 2,000 | 1.26 | 18.2 | 2.00 |
+| Worker: route with a parameter | 20 | 0.51 | 0.42 | 0.71 |
+| Worker: 404 | 20 | 0.69 | 0.36 | 0.78 |
+| PHP-FPM with route cache | 20 | 1.16 | 1.96 | 1.52 |
+| Worker: static route | 2,000 | 0.19 | 0.19 | 0.49 |
+| Worker: route with a parameter | 2,000 | 0.51 | 14.3 | 1.20 |
+| Worker: 404 | 2,000 | 0.70 | 13.9 | 1.25 |
+| PHP-FPM with route cache | 2,000 | 1.15 | 17.0 | 2.11 |
 
 ### HTTP
 
-PHP's built-in server and `ab` alone (a script that only echoes the JSON) take 81 µs, and that is part of every number below.
+PHP's built-in server and `ab` alone (a script that only echoes the JSON) take 76 µs, and that is part of every number below.
 
 | Route with a parameter | Dromos | Dromos lean | Flight | Laravel | Slim | Mezzio | FastRoute¹ | Symfony¹ |
 |---|---|---|---|---|---|---|---|---|
-| 20 routes | 134 | 124 | 188 | 424 | 223 | 374 | 156 | 180 |
-| 20 routes, cached | 120 | 113 | 191² | 235 | 213 | 268 | 125 | 118 |
-| 2,000 routes | 1,293 | 1,298 | 5,074 | 10,929 | 32,220 | 33,893 | 31,490 | 6,025 |
-| 2,000 routes, cached | 126 | 109 | 5,202² | 234 | 1,631 | 3,056 | 131 | 113 |
+| 20 routes | 133 | 121 | 187 | 431 | 215 | 376 | 145 | 169 |
+| 20 routes, cached | 126 | 110 | 187² | 233 | 200 | 261 | 110 | 112 |
+| 2,000 routes | 1,283 | 1,274 | 5,077 | 10,753 | 31,771 | 33,405 | 31,313 | 5,919 |
+| 2,000 routes, cached | 125 | 107 | 5,003² | 227 | 1,622 | 3,021 | 126 | 108 |
 
 ### Footprint
 
@@ -122,21 +122,24 @@ One request with 200 routes, in a fresh process without opcache:
 
 | | Files | Lines of code | Peak memory |
 |---|---|---|---|
-| Dromos | 19 | 1,970 | 564 KB |
-| Dromos lean | 5 | 817 | 366 KB |
+| Dromos | 25 | 3,424 | 678 KB |
+| Dromos lean | 5 | 834 | 368 KB |
 | Flight | 10 | 4,332 | 906 KB |
-| Laravel | 75 | 26,248 | 4,126 KB |
-| Slim | 68 | 8,286 | 1,212 KB |
-| Mezzio | 103 | 19,198 | 2,900 KB |
-| FastRoute | 10 | 723 | 347 KB |
+| Laravel | 75 | 26,248 | 4,125 KB |
+| Slim | 68 | 8,286 | 1,211 KB |
+| Mezzio | 103 | 19,198 | 2,899 KB |
+| FastRoute | 10 | 723 | 346 KB |
 | Symfony | 10 | 2,042 | 788 KB |
+
+Of full Dromos's 3,424 lines, 1,128 are the PSR-7 interfaces, mostly docblocks.
 
 ### Reading the results
 
 - **Of the full routers (Dromos, Flight, Laravel, Slim and Mezzio), Dromos is the fastest in every row** of the dataset: every route count, worker and PHP-FPM, in-process and over HTTP. It also loads the fewest lines of code and uses the least memory of the five.
-- **Dromos in lean mode is the fastest of all eight in every in-process row at 2,000 routes, and in every row at 200 routes bar one:** PHP-FPM with a cache, where Symfony takes 1.72 µs and lean mode 2.07 µs. At 20 routes it is the fastest for static routes, POSTs and uncached PHP-FPM, and behind in four rows: FastRoute for a route with a parameter (0.62 against 0.82 µs), with two parameters (0.70 against 1.01 µs) and a 404 (0.42 against 0.74 µs), and Symfony for PHP-FPM with a cache (1.69 against 2.09 µs).
-- **Those four gaps have two causes.** In the 20-route worker rows it is the matcher: FastRoute's is faster at that size, as the matching-only rows show. Under PHP-FPM with a cache, Dromos's matcher is the fastest of the three (1.25 µs against Symfony's 1.50 µs), so the gap is the cost of loading the router around it: building the route objects and checking the cache.
-- **Lean mode saves 1.2 to 1.9 µs a request in a worker, and about 2.5 µs under PHP-FPM with a cache,** against full Dromos, and loads 5 files instead of 19. It is for APIs that need no middleware; full Dromos is still faster than every other full router.
-- **Over HTTP, lean mode is the fastest in every 20-route row,** and the fastest or within 6 µs of the fastest at 2,000 routes. At 200 routes with caches, FastRoute and Symfony are 6 to 16 µs ahead. Each of these requests includes 81 µs of server and `ab` time, so the gaps between the three are small against the total.
+- **Dromos in lean mode is the fastest of all eight in every in-process row at 2,000 routes, and in every row at 200 routes bar one:** PHP-FPM with a cache, where Symfony takes 1.71 µs and lean mode 1.75 µs, inside the run-to-run spread. At 20 routes it is the fastest for static routes, POSTs and uncached PHP-FPM, and behind in four rows: FastRoute for a route with a parameter (0.61 against 0.81 µs), with two parameters (0.69 against 0.98 µs) and a 404 (0.40 against 0.73 µs), and Symfony for PHP-FPM with a cache (1.66 against 1.73 µs).
+- **Those gaps have two causes.** In the 20-route worker rows it is the matcher: FastRoute's is faster at that size, as the matching-only rows show. Under PHP-FPM with a cache, Dromos's matcher is the fastest of the three (1.16 µs against Symfony's 1.52 µs), so the gap is the fixed cost of loading the router around it.
+- **Lean mode's cached PHP-FPM request is about 0.35 µs faster than in the earlier dataset** (1.73 against 2.09 µs at 20 routes, 1.74 against 2.10 µs at 2,000), because #42 loads the cache with fewer checks. Full Dromos's worker requests are within 0.12 µs of the earlier dataset, the cost of PSR-7 compliance.
+- **Lean mode saves 1.3 to 1.9 µs a request in a worker, and about 2.7 µs under PHP-FPM with a cache,** against full Dromos, and loads 5 files instead of 25. It is for APIs that need no middleware; full Dromos is still faster than every other full router.
+- **Over HTTP, lean mode is the fastest in every 20-route row,** level with FastRoute for a cached route with a parameter. With caches at 200 and 2,000 routes, it is the fastest or within 15 µs of the fastest, behind FastRoute and Symfony. Each of these requests includes 76 µs of server and `ab` time, so the gaps between the three are small against the total.
 - **Slim and Mezzio slow down as routes are added, even with their caches,** because they register every route on each request. Mezzio's worker numbers grow too: on every match, `mezzio-fastroute` searches the full route list for the matched route.
-- **A few cells have a wide spread,** up to ±107% (full Dromos, POST, 20 routes, in-process), where one run hit a slow patch: other work ran on the machine during some of the in-process runs. The median is robust to one bad run; the spread is shown so you can see where that happened.
+- **A few cells have a wide spread,** up to ±68% (Symfony, 404 over HTTP, 20 routes), where one run hit a slow patch. The median is robust to one bad run; the spread is shown so you can see where that happened.

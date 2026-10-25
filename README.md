@@ -2,7 +2,7 @@
 
 # Dromos
 
-**A PHP router for fast APIs.** In the [router comparison](benchmark/compare/README.md), Dromos is faster than Symfony Routing, FastRoute, Laravel's router, Flight, Slim and Mezzio in every in-process test at 2,000 routes. It loads 5 files to route a request, and its only dependencies are the PSR interface packages.
+A PHP router for fast APIs. In the [router comparison](benchmark/compare/README.md) it beats Symfony Routing, FastRoute, Laravel's router, Flight, Slim and Mezzio in every in-process test at 2,000 routes. It loads 5 files to route a request, and it depends only on the PSR interface packages.
 
 ```php
 Router::Get('/users/{id}', [UserController::class, 'show']);
@@ -12,11 +12,11 @@ $route = Router::match($_SERVER['REQUEST_METHOD'], $path); // [200, $handler, $p
 
 ## The numbers
 
-The time each router spends on one request, in µs: the median of 5 runs on an Apple M3 Pro with PHP 8.4.4 and opcache. Lower is better. FastRoute and Symfony only find the route; Dromos's lean mode does the same, then calls the controller.
+Microseconds each router spends on a request to a route with a parameter, on an Apple M3 Pro with PHP 8.4.4 and opcache. Lower is better.
 
 <img src="docs/benchmark-worker-param-2000.svg" alt="Route with a parameter, 2,000 routes, worker: Dromos lean 0.83 µs, Symfony 1.36, Dromos full 2.43, FastRoute 16.7, Slim 29.1, Laravel 41.1, Mezzio 141, Flight 1,373" width="672">
 
-| Route with a parameter | Worker, 20 routes | Worker, 2,000 routes | PHP-FPM cached, 20 routes | PHP-FPM cached, 2,000 routes | Files loaded |
+| | Worker, 20 routes | Worker, 2,000 routes | PHP-FPM cached, 20 routes | PHP-FPM cached, 2,000 routes | Files loaded |
 |---|---|---|---|---|---|
 | **Dromos lean** | **0.81** | **0.83** | **1.73** | **1.74** | **5** |
 | **Dromos** | **2.40** | **2.43** | **4.46** | **4.45** | **25** |
@@ -27,19 +27,22 @@ The time each router spends on one request, in µs: the median of 5 runs on an A
 | Mezzio | 11.5 | 141 | 72.6 | 2,925 | 103 |
 | Flight | 25.8 | 1,373 | 74.4* | 4,889* | 10 |
 
-\* Flight has no route cache. The [router comparison](benchmark/compare/README.md) has every test, over HTTP too, with the run-to-run spread and every sample.
+\* Flight has no route cache. The [router comparison](benchmark/compare/README.md) has every test, including real HTTP requests, with the spread between runs and every sample.
 
-### How it's measured
+<details>
+<summary>How it's measured</summary>
 
-- **The same routes for every router.** 5, 50 or 500 resources with four controller routes each, giving 20, 200 or 2,000 routes: `GET /res{n}`, `GET /res{n}/{id}`, `GET /res{n}/{id}/items/{item}` and `POST /res{n}`. The tests above request a route of the last resource registered, the worst case for routers that try their routes in turn. Every handler returns a small JSON body.
-- **Checked before timed.** Each router must return the expected status and body for every request in the set, or the run stops.
-- **Each router as its documentation recommends,** with its own route cache where it has one. FastRoute and Symfony Routing are matchers only, so their adapters add the least glue a front controller needs: create the controller, pass the parameters, return the JSON. Laravel is `illuminate/routing` on its own, without the rest of the framework. Both choices favour the other routers.
+<br>
+
+- **Routes:** 5, 50 or 500 resources with four controller routes each, so 20, 200 or 2,000 routes: `GET /res{n}`, `GET /res{n}/{id}`, `GET /res{n}/{id}/items/{item}` and `POST /res{n}`. The table requests a route of the last resource registered, which is the worst case for routers that try their routes in turn. Every handler returns a small JSON body.
+- **Correctness:** before anything is timed, each router must return the expected status and body for every request in the set, or the run stops.
+- **Setup:** each router is set up as its documentation recommends, with its own route cache where it has one. FastRoute and Symfony Routing only match, so their adapters add the least a front controller needs: create the controller, pass the parameters and return the JSON. Laravel is `illuminate/routing` on its own, without the rest of the framework. Both choices favour the other routers.
 - **Worker:** the router is booted once, then one request after another is timed in a loop.
-- **PHP-FPM cached:** every iteration creates a new router, loads its routes from its cache and handles one request. It runs in one process with opcache on, so the cost of loading the router's files isn't counted. The HTTP tests in the [router comparison](benchmark/compare/README.md) count that, with real requests to PHP's built-in server.
-- **Timing:** each test runs for 5 rounds of 60 ms, timed with `hrtime()`, after one untimed call per round. Each script runs 5 times, each in a fresh process, and a result is the median across runs of each run's median.
-- **Machine:** a MacBook Pro with an Apple M3 Pro, macOS, PHP 8.4.4 with opcache, no JIT and no Xdebug. The package versions are in the [report](benchmark/compare/results/2026-10-25-darwin-arm64-php8.4.4/report.md).
+- **PHP-FPM cached:** every iteration creates a new router, loads its routes from its cache and handles one request. This runs in one process with opcache on, so loading the router's files isn't counted. The HTTP tests in the router comparison count that.
+- **Timing:** each test runs for 5 rounds of 60 ms, timed with `hrtime()`, after one untimed call per round. Each script runs 5 times in a fresh process, and a result is the median across runs of each run's median.
+- **Machine:** a MacBook Pro with an Apple M3 Pro, macOS, PHP 8.4.4 with opcache, no JIT and no Xdebug. Package versions are in the [report](benchmark/compare/results/2026-10-25-darwin-arm64-php8.4.4/report.md).
 
-To run it yourself, which takes about 90 minutes and needs `ab` (ApacheBench):
+To run it yourself (about 90 minutes, and it needs `ab`):
 
 ```bash
 cd benchmark/compare
@@ -48,20 +51,21 @@ php run.php
 php report.php results/<name>
 ```
 
+</details>
+
 ## Why Dromos
 
-- **Route count doesn't change its speed.** Exact paths are a hash lookup. Routes with placeholders are grouped by their static prefix (`/users` for `/users/{id}`), so a request tests only the few routes that could match. Dromos takes the same time with 20 routes as with 2,000. FastRoute combines its routes into regexes of about ten routes each and tries them in turn, so at 2,000 routes it is 27 times slower than at 20.
-- **Two modes, one route table.** `Router::match()` only finds the route, as FastRoute does, for APIs that need no middleware. `Router::handle()` builds PSR-7 requests and responses and runs middleware. Both read the same routes and caches, so you can start lean and add middleware later, or use both in one app.
-- **A route cache that stays correct.** `Router::loadRoutes()` stores your compiled routes in a PHP file that opcache keeps in memory. While opcache holds both that file and your routes file as current, a request touches no file at all. The cache rebuilds itself when your routes change, at the moment PHP would notice changed code, so it never serves routes that PHP itself wouldn't.
-- **Small enough to read.** Lean mode loads 5 files, 834 lines, in 368 KB of memory. Full mode, with PSR-7 messages and middleware, loads 25 files and 3,424 lines, of which 1,128 are the PSR-7 interfaces, mostly docblocks. Laravel's router loads 75 files and 26,248 lines.
-- **Standard where it counts.** Requests, responses, streams and URIs pass the community [PSR-7 integration tests](https://github.com/php-http/psr7-integration-tests), `HttpFactory` passes the [PSR-17 factory tests](https://github.com/http-interop/http-factory-tests), and PSR-15 middleware from any package runs alongside Dromos middleware.
-- **Built for PHP-FPM and workers.** Under PHP-FPM, preloading and the route cache keep routing to about 1.7 µs a request in lean mode and 4.5 µs in full mode, at any route count. Under OpenSwoole, the route table is built once per worker and `SwooleEmitter` sends the responses.
+Most of the routers we tested slow down as you add routes. FastRoute tries its routes in batches of about ten, so at 2,000 routes it is 27 times slower than at 20. Dromos finds exact paths with a hash lookup, and groups routes with placeholders by their static prefix, so `/users/42` is only tested against the routes under `/users`. It takes the same time with 20 routes as with 2,000.
+
+You can use it two ways. `Router::match()` only finds the route and leaves the rest to you, which is all many APIs need. `Router::handle()` gives you PSR-7 requests and responses and runs middleware, including any PSR-15 middleware. Both use the same routes and the same cache, so you can start lean and add middleware later.
+
+Under PHP-FPM, `Router::loadRoutes()` keeps the compiled routes in a PHP file that opcache holds in memory, so a request touches no file and routing takes about 1.7 µs in lean mode, or 4.5 µs with middleware. The cache rebuilds itself when you change your routes. Under OpenSwoole, routes are built once per worker.
+
+It's also small enough to read in an afternoon. Lean mode is 5 files and 834 lines; full mode is 25 files and 3,424 lines, a third of which are the PSR-7 interfaces, mostly docblocks. The messages pass the community [PSR-7](https://github.com/php-http/psr7-integration-tests) and [PSR-17](https://github.com/http-interop/http-factory-tests) test suites.
 
 ## When to use something else
 
-- **With few routes, FastRoute and Symfony are slightly faster in some tests.** At 20 routes, FastRoute leads routes with parameters and 404s by up to 0.33 µs, and Symfony leads a cached PHP-FPM request by 0.07 µs. From 200 routes, lean mode is the fastest in every test bar one: a cached PHP-FPM request, where Symfony is 0.04 µs ahead, inside the run-to-run spread.
-- **If you want a full framework,** with an ORM, templating and a container, use Laravel or Symfony. Dromos is a router with middleware, request validation and response helpers, and leaves the rest to you.
-- **Routing is rarely your bottleneck.** These are microseconds a request, and one database query takes far longer. The difference shows in APIs that serve many small requests, and in how much a request costs your servers.
+With only a handful of routes, FastRoute and Symfony win some tests, by a fraction of a microsecond. If you want an ORM, templating and a container, use Laravel or Symfony; Dromos is a router with middleware, validation and response helpers. And routing is rarely the slow part of a request: one database query costs more than all of this. Dromos matters most for APIs that serve a lot of small requests.
 
 ## Installation
 
@@ -73,13 +77,14 @@ Requires **PHP 8.2+**. The only dependencies are the four PSR interface packages
 
 ## Features
 
-- **Routing:** route parameters, groups with a shared prefix and middleware, resource routes, controllers built by your own container if you like, and a 405 with an `Allow` list when only the method is wrong.
-- **Lean mode:** `Router::match()` returns `[200, $handler, $params, $middleware]`, `[404]` or `[405, $allowedMethods]`, the shape FastRoute uses.
-- **Route caching:** a cached routes file for controller routes, and a compiled table cache for routes with closures. Both rebuild themselves.
-- **Middleware:** global, per route and per group, Dromos or PSR-15. CORS, authentication and rate limiting are included.
-- **Requests and responses:** PSR-7 messages, JSON body parsing, JSON error responses and response helpers.
-- **Input validation:** pipe-delimited rules such as `required|email`.
-- **Emitters:** `Emitter` for PHP-FPM and `SwooleEmitter` for OpenSwoole. Implement `EmitterInterface` for other runtimes.
+- Route parameters, groups with shared middleware, resource routes, and a 405 with an `Allow` header when only the method is wrong
+- Controllers from your own container, through `ControllerResolverInterface`
+- Lean mode: `Router::match()` returns `[200, $handler, $params, $middleware]`, `[404]` or `[405, $allowedMethods]`, like FastRoute
+- Two route caches that rebuild themselves: a routes file for controller routes, and a compiled table for routes with closures
+- Global, group and per-route middleware, Dromos or PSR-15, with CORS, auth and rate limiting included
+- PSR-7 requests and responses, JSON body parsing, JSON errors and response helpers
+- Input validation with rules such as `required|email`
+- Emitters for PHP-FPM and OpenSwoole, or implement `EmitterInterface` for anything else
 
 ---
 

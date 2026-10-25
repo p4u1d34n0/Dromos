@@ -59,9 +59,78 @@ final class UriTest extends TestCase
     }
 
     #[Test]
-    public function test_a_port_out_of_range_is_refused(): void
+    public function test_a_port_out_of_range_is_dropped(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        Uri::fromServerParams(['HTTP_HOST' => 'a.test:70000']);
+        // The Host header comes from the client, so a bad one mustn't stop the request
+        $uri = Uri::fromServerParams(['HTTP_HOST' => 'a.test:70000', 'REQUEST_URI' => '/']);
+
+        $this->assertSame('a.test', $uri->getHost());
+        $this->assertNull($uri->getPort());
+    }
+
+    #[Test]
+    public function test_numbers_and_booleans_from_other_servers_are_read(): void
+    {
+        // Swoole and RoadRunner adapters can give SERVER_PORT as an int and HTTPS as a bool
+        $uri = Uri::fromServerParams(['HTTPS' => true, 'SERVER_NAME' => 'api.test', 'SERVER_PORT' => 8443, 'REQUEST_URI' => '/']);
+
+        $this->assertSame('https://api.test:8443/', (string) $uri);
+    }
+
+    /** @return array<string, array{callable(Uri): mixed, mixed}> */
+    public static function authorityReads(): array
+    {
+        return [
+            'getScheme'    => [static fn(Uri $uri) => $uri->getScheme(), 'https'],
+            'getAuthority' => [static fn(Uri $uri) => $uri->getAuthority(), 'api.test:8080'],
+            'getUserInfo'  => [static fn(Uri $uri) => $uri->getUserInfo(), ''],
+            'getHost'      => [static fn(Uri $uri) => $uri->getHost(), 'api.test'],
+            'getPort'      => [static fn(Uri $uri) => $uri->getPort(), 8080],
+            '__toString'   => [static fn(Uri $uri) => (string) $uri, 'https://api.test:8080/a?b=1'],
+        ];
+    }
+
+    /**
+     * The scheme, host and port are read on first use, so each way of
+     * reading them must see the server params.
+     *
+     * @param callable(Uri): mixed $read
+     */
+    #[Test]
+    #[DataProvider('authorityReads')]
+    public function test_the_authority_is_read_whichever_getter_comes_first(callable $read, mixed $expected): void
+    {
+        $uri = Uri::fromServerParams(['HTTPS' => 'on', 'HTTP_HOST' => 'API.test:8080', 'REQUEST_URI' => '/a?b=1']);
+
+        $this->assertSame($expected, $read($uri));
+    }
+
+    /** @return array<string, array{callable(Uri): Uri, string}> */
+    public static function authorityChanges(): array
+    {
+        return [
+            'withScheme'   => [static fn(Uri $uri) => $uri->withScheme('https'), 'https://api.test:8080/a'],
+            'withUserInfo' => [static fn(Uri $uri) => $uri->withUserInfo('me'), 'http://me@api.test:8080/a'],
+            'withHost'     => [static fn(Uri $uri) => $uri->withHost('other.test'), 'http://other.test:8080/a'],
+            'withPort'     => [static fn(Uri $uri) => $uri->withPort(null), 'http://api.test/a'],
+            'withPath'     => [static fn(Uri $uri) => $uri->withPath('/b'), 'http://api.test:8080/b'],
+        ];
+    }
+
+    /**
+     * A copy made before the authority is read must keep its change, not
+     * have it overwritten when the server params are read later, and must
+     * leave the original as it was.
+     *
+     * @param callable(Uri): Uri $change
+     */
+    #[Test]
+    #[DataProvider('authorityChanges')]
+    public function test_a_change_made_before_the_authority_is_read_is_kept(callable $change, string $expected): void
+    {
+        $uri = Uri::fromServerParams(['HTTP_HOST' => 'api.test:8080', 'REQUEST_URI' => '/a']);
+
+        $this->assertSame($expected, (string) $change($uri));
+        $this->assertSame('http://api.test:8080/a', (string) $uri);
     }
 }

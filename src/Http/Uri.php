@@ -29,6 +29,14 @@ class Uri implements UriInterface
     protected string $fragment = '';
 
     /**
+     * The $_SERVER-style parameters whose scheme, host and port are still to
+     * be read (see fromServerParams()), or null once they have been.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $server = null;
+
+    /**
      * @throws InvalidArgumentException If the URI can't be parsed
      */
     public function __construct(string $uri = '')
@@ -58,37 +66,38 @@ class Uri implements UriInterface
      */
     public static function fromServerParams(array $server): self
     {
-        $value = static fn(string $key): string => is_scalar($server[$key] ?? null) ? (string) $server[$key] : '';
-
+        // A router needs only the path, so the scheme, host and port are read
+        // when they are first asked for, by resolveAuthority()
         $uri = new self();
-        $https = $value('HTTPS');
-        $uri->scheme = $https !== '' && $https !== 'off' ? 'https' : 'http';
+        $uri->server = $server;
 
-        $host = $value('HTTP_HOST') !== '' ? $value('HTTP_HOST') : $value('SERVER_NAME');
-        $port = $value('SERVER_PORT') === '' ? null : (int) $value('SERVER_PORT');
-        // "[::1]:8080" and "example.com:8080": a port follows the last colon after any IPv6 brackets
-        $colon = strrpos($host, ':');
-        if ($colon !== false && $colon > (int) strrpos($host, ']')) {
-            $port = (int) substr($host, $colon + 1);
-            $host = substr($host, 0, $colon);
+        $target = $server['REQUEST_URI'] ?? '';
+        if (!is_string($target) || $target === '') {
+            $target = '/';
         }
-        $uri->host = strtolower($host);
-        $uri->port = $port === null || $host === '' ? null : self::port($port);
-
-        $target = $value('REQUEST_URI') === '' ? '/' : $value('REQUEST_URI');
         $question = strpos($target, '?');
-        $uri->path = self::path($question === false ? $target : substr($target, 0, $question));
-        $uri->query = $question === false ? '' : self::queryOrFragment(substr($target, $question + 1));
+        if ($question === false) {
+            $uri->path = self::path($target);
+        } else {
+            $uri->path = self::path(substr($target, 0, $question));
+            $uri->query = self::queryOrFragment(substr($target, $question + 1));
+        }
         return $uri;
     }
 
     public function getScheme(): string
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         return $this->scheme;
     }
 
     public function getAuthority(): string
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         if ($this->host === '') {
             return '';
         }
@@ -103,12 +112,18 @@ class Uri implements UriInterface
 
     public function getHost(): string
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         return $this->host;
     }
 
     /** Null when no port is set, or when it's the scheme's default. */
     public function getPort(): ?int
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         return $this->port === (self::DEFAULT_PORTS[$this->scheme] ?? null) ? null : $this->port;
     }
 
@@ -133,6 +148,9 @@ class Uri implements UriInterface
 
     public function withScheme(string $scheme): static
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         $clone = clone $this;
         $clone->scheme = self::scheme($scheme);
         return $clone;
@@ -147,6 +165,9 @@ class Uri implements UriInterface
 
     public function withHost(string $host): static
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         $clone = clone $this;
         $clone->host = strtolower($host);
         return $clone;
@@ -154,6 +175,9 @@ class Uri implements UriInterface
 
     public function withPort(?int $port): static
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         $clone = clone $this;
         $clone->port = $port === null ? null : self::port($port);
         return $clone;
@@ -183,6 +207,9 @@ class Uri implements UriInterface
     /** The URI as RFC 3986 section 5.3 composes it. */
     public function __toString(): string
     {
+        if ($this->server !== null) {
+            $this->resolveAuthority();
+        }
         $uri = $this->scheme === '' ? '' : $this->scheme . ':';
         $authority = $this->getAuthority();
         $path = $this->path;
@@ -202,6 +229,40 @@ class Uri implements UriInterface
             $uri .= '#' . $this->fragment;
         }
         return $uri;
+    }
+
+    /**
+     * Read the scheme, host and port from the parameters fromServerParams()
+     * was given: the scheme from HTTPS, and the host and port from the Host
+     * header, or SERVER_NAME and SERVER_PORT.
+     */
+    private function resolveAuthority(): void
+    {
+        $server = $this->server ?? [];
+        $this->server = null;
+
+        $https = $server['HTTPS'] ?? '';
+        $this->scheme = (is_string($https) ? $https !== '' && $https !== 'off' : (bool) $https) ? 'https' : 'http';
+
+        $host = $server['HTTP_HOST'] ?? '';
+        if (!is_string($host) || $host === '') {
+            $host = $server['SERVER_NAME'] ?? '';
+            $host = is_string($host) ? $host : '';
+        }
+        if ($host === '') {
+            return;
+        }
+        $port = $server['SERVER_PORT'] ?? null;
+        $port = is_int($port) ? $port : (is_string($port) && $port !== '' ? (int) $port : null);
+        // "[::1]:8080" and "example.com:8080": a port follows the last colon after any IPv6 brackets
+        $colon = strrpos($host, ':');
+        if ($colon !== false && $colon > (int) strrpos($host, ']')) {
+            $port = (int) substr($host, $colon + 1);
+            $host = substr($host, 0, $colon);
+        }
+        $this->host = strtolower($host);
+        // The Host header comes from the client, so a port out of range is dropped rather than thrown
+        $this->port = $port !== null && $port >= 0 && $port <= 65535 ? $port : null;
     }
 
     /**

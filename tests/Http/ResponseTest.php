@@ -209,4 +209,43 @@ final class ResponseTest extends TestCase
 
         $this->assertSame($file, $response->withStatus(201)->getBody(), 'not copied into memory');
     }
+
+    /** @return array<string, array{callable(int): Response}> */
+    public static function statusSetters(): array
+    {
+        return [
+            'constructor' => [static fn(int $code) => new Response($code)],
+            'withStatus'  => [static fn(int $code) => (new Response())->withStatus($code)],
+            'json'        => [static fn(int $code) => (new Response())->json([], $code)],
+            'text'        => [static fn(int $code) => (new Response())->text('', $code)],
+            'html'        => [static fn(int $code) => (new Response())->html('', $code)],
+        ];
+    }
+
+    /** @param callable(int): Response $make */
+    #[Test]
+    #[DataProvider('statusSetters')]
+    public function test_status_codes_from_100_to_599_are_accepted(callable $make): void
+    {
+        $this->assertSame(100, $make(100)->getStatusCode());
+        $this->assertSame(599, $make(599)->getStatusCode());
+    }
+
+    /** @param callable(int): Response $make */
+    #[Test]
+    #[DataProvider('statusSetters')]
+    public function test_a_status_code_below_100_is_refused(callable $make): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $make(99);
+    }
+
+    /** @param callable(int): Response $make */
+    #[Test]
+    #[DataProvider('statusSetters')]
+    public function test_a_status_code_above_599_is_refused(callable $make): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $make(600);
+    }
 }

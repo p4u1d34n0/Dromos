@@ -55,22 +55,19 @@ class Request implements ServerRequestInterface
         $this->serverParams  = $_SERVER;
         $this->cookieParams  = $_COOKIE;
         $this->queryParams   = $_GET;
-        $this->parsedBody    = self::isFormPost($_SERVER) ? $_POST : null;
+        $this->parsedBody    = $this->method === 'POST' && self::isFormContent($_SERVER) ? $_POST : null;
         $this->uploadedFiles = $_FILES;
     }
 
     /**
-     * True for a POST whose body PHP parsed into $_POST: a form or multipart
-     * body. PSR-7 gives other requests a null parsed body (or, here, a
+     * True for a form or multipart body: the bodies PHP parses into $_POST
+     * for a POST. PSR-7 gives other requests a null parsed body (or, here, a
      * decoded JSON body).
      *
      * @param array<string, mixed> $server
      */
-    private static function isFormPost(array $server): bool
+    private static function isFormContent(array $server): bool
     {
-        if (($server['REQUEST_METHOD'] ?? '') !== 'POST') {
-            return false;
-        }
         $type = strtolower((string) ($server['CONTENT_TYPE'] ?? ''));
         return str_starts_with($type, 'application/x-www-form-urlencoded') || str_starts_with($type, 'multipart/form-data');
     }

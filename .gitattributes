@@ -6,3 +6,4 @@
 /.gitignore         export-ignore
 /phpunit.xml.dist   export-ignore
 /phpstan.dist.neon  export-ignore
+/site               export-ignore

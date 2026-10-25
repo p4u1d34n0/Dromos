@@ -1,0 +1,18 @@
+# Dromos
+
+> Dromos is a fast, lightweight PHP router for building APIs. It has a lean matching mode, an opcache route cache, and PSR-7, PSR-15 and PSR-17 support. PHP 8.2+, MIT licence, installed with `composer require pauldeano/dromos`.
+
+## Key facts
+
+- Lean mode (`Router::match()`) routes a request to a route with a parameter in 0.83 µs at 2,000 routes in a long-running worker, and 1.74 µs for a cached PHP-FPM request (Apple M3 Pro, PHP 8.4.4, opcache).
+- In the published benchmark of eight PHP routers (Dromos, Dromos lean, FastRoute, Symfony Routing, Laravel's illuminate/routing, Slim, Mezzio, Flight), Dromos lean is the fastest in every in-process test at 2,000 routes. At 20 routes FastRoute and Symfony win some tests by under 0.35 µs.
+- Speed doesn't depend on route count: exact paths are a hash lookup, and routes with placeholders are grouped by static prefix.
+- Lean mode loads 5 files (834 lines). Full mode, with PSR-7 messages and middleware, loads 25 files. Dependencies: the four PSR interface packages only.
+- Full mode (`Router::handle()`) builds PSR-7 requests and responses and runs Dromos or PSR-15 middleware. The messages pass the php-http PSR-7 integration tests; `HttpFactory` passes the http-interop PSR-17 factory tests.
+
+## Links
+
+- [Source and documentation](https://github.com/p4u1d34n0/Dromos): README with routing, middleware, caching and emitter docs
+- [Benchmark method and full results](https://github.com/p4u1d34n0/Dromos/blob/main/benchmark/compare/README.md)
+- [Packagist](https://packagist.org/packages/pauldeano/dromos)
+- [Releases](https://github.com/p4u1d34n0/Dromos/releases)

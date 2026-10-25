@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dromos: Fast PHP Router for APIs | Lightweight, PSR-7 Ready</title>
+<meta name="description" content="Dromos is a fast, lightweight PHP router for APIs: 0.83 µs a request at 2,000 routes, 5 files, PSR-7/15/17. Benchmarked against FastRoute, Symfony and Laravel.">
+<link rel="canonical" href="https://dromos.codenexis.com/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Paul Dean">
+<meta name="google-site-verification" content="T-54ueQO1bvLEGg2c8SJVNAFfpcxTyJW6EfE_EPdSIs">
+<meta name="theme-color" content="#241e2b">
+<meta name="color-scheme" content="dark">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dromos">
+<meta property="og:url" content="https://dromos.codenexis.com/">
+<meta property="og:title" content="Dromos: the fast PHP router for APIs">
+<meta property="og:description" content="0.83 µs a request at 2,000 routes, 5 files, PSR-7/15/17. A lightweight PHP router benchmarked against FastRoute, Symfony and Laravel.">
+<meta property="og:image" content="https://dromos.codenexis.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Dromos, the fast PHP router: 0.83 µs per request at 2,000 routes">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dromos: the fast PHP router for APIs">
+<meta name="twitter:description" content="0.83 µs a request at 2,000 routes, 5 files, PSR-7/15/17. Benchmarked against FastRoute, Symfony and Laravel.">
+<meta name="twitter:image" content="https://dromos.codenexis.com/assets/og-image.png">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/assets/fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=2">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://dromos.codenexis.com/#website",
+      "url": "https://dromos.codenexis.com/",
+      "name": "Dromos",
+      "description": "A fast, lightweight PHP router for APIs",
+      "inLanguage": "en-GB",
+      "publisher": { "@id": "https://dromos.codenexis.com/#author" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://dromos.codenexis.com/#author",
+      "name": "Paul Dean",
+      "url": "https://github.com/p4u1d34n0"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://dromos.codenexis.com/#software",
+      "name": "Dromos",
+      "alternateName": "Dromos PHP Router",
+      "description": "A fast, lightweight PHP router for APIs, with a lean matching mode, an opcache route cache, and PSR-7, PSR-15 and PSR-17 support.",
+      "url": "https://dromos.codenexis.com/",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "PHP router",
+      "operatingSystem": "Linux, macOS, Windows",
+      "softwareVersion": "1.5.1",
+      "softwareRequirements": "PHP 8.2 or later",
+      "license": "https://opensource.org/licenses/MIT",
+      "downloadUrl": "https://packagist.org/packages/pauldeano/dromos",
+      "installUrl": "https://packagist.org/packages/pauldeano/dromos",
+      "image": "https://dromos.codenexis.com/assets/og-image.png",
+      "author": { "@id": "https://dromos.codenexis.com/#author" },
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+      "keywords": "PHP router, fast PHP router, PHP API router, lightweight PHP router, PSR-7 router, PSR-15 middleware, FastRoute alternative"
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "https://dromos.codenexis.com/#source",
+      "name": "Dromos",
+      "codeRepository": "https://github.com/p4u1d34n0/Dromos",
+      "programmingLanguage": { "@type": "ComputerLanguage", "name": "PHP" },
+      "runtimePlatform": "PHP 8.2+",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": { "@id": "https://dromos.codenexis.com/#author" },
+      "targetProduct": { "@id": "https://dromos.codenexis.com/#software" }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://dromos.codenexis.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the fastest PHP router?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Of the eight PHP routers in the Dromos benchmark (Dromos, Dromos lean mode, FastRoute, Symfony Routing, Laravel, Slim, Mezzio and Flight), Dromos in lean mode is the fastest in every in-process test at 2,000 routes: 0.83 µs for a request to a route with a parameter, against 1.36 µs for Symfony Routing and 16.7 µs for FastRoute. With only 20 routes, FastRoute and Symfony win some tests by a fraction of a microsecond. Routers written in C, such as Phalcon's, weren't measured." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Dromos faster than FastRoute?",
+          "acceptedAnswer": { "@type": "Answer", "text": "From 200 routes up, yes, in every test measured. FastRoute tries its routes in batches of about ten, so it slows down as routes are added: at 2,000 routes it takes 16.7 µs for a route with a parameter, where Dromos takes 0.83 µs. With 20 routes, FastRoute is up to 0.33 µs faster for routes with parameters and 404s." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Dromos faster than Laravel routing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes, in every test measured. A request to a route with a parameter takes 41.1 µs in Laravel's router (illuminate/routing on its own) at 2,000 routes, against 0.83 µs in Dromos lean mode and 2.43 µs in full Dromos with PSR-7 requests and middleware. Laravel's router loads 75 files; Dromos loads 5 in lean mode." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Dromos support PSR-7, PSR-15 and PSR-17?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Its requests, responses, streams and URIs implement PSR-7 and pass the php-http PSR-7 integration tests. PSR-15 middleware from any package runs alongside Dromos middleware, and HttpFactory implements all six PSR-17 factories and passes the http-interop factory tests." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use Dromos with OpenSwoole, RoadRunner or FrankenPHP?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Dromos runs in any long-running PHP worker: routes are compiled once and reused for every request. It ships an emitter for OpenSwoole, and you can implement EmitterInterface to send responses on other runtimes. It also runs under PHP-FPM, where its opcache route cache keeps routing to about 1.7 µs a request." }
+        },
+        {
+          "@type": "Question",
+          "name": "What does Dromos need to run?",
+          "acceptedAnswer": { "@type": "Answer", "text": "PHP 8.2 or later. Its only dependencies are the four PSR interface packages: psr/http-message, psr/http-server-handler, psr/http-server-middleware and psr/http-factory. Install it with composer require pauldeano/dromos. It's free and MIT licensed." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/" aria-label="Dromos home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg>
+      <span>dromos</span>
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="#benchmarks">Benchmarks</a></li>
+        <li><a href="#why">Why Dromos</a></li>
+        <li><a href="#quick-start">Quick start</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a class="gh" href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 32 32">
+    <rect x="2" y="5" width="28" height="3" rx="1.5" fill="#3ec5ff"/>
+    <rect x="6" y="11" width="24" height="3" rx="1.5" fill="#ffc22e"/>
+    <rect x="10" y="17" width="20" height="3" rx="1.5" fill="#ff8a3d"/>
+    <rect x="14" y="23" width="16" height="3" rx="1.5" fill="#ff4a5a"/>
+  </symbol>
+</svg>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">PHP router · v1.5.1 · MIT</p>
+        <h1>The fast PHP router for <span class="hl">APIs</span>.</h1>
+        <p class="lede">Dromos routes a request in <strong>0.83 µs</strong>, with 20 routes or 2,000. It's the fastest of the eight PHP routers we benchmarked at 2,000 routes, it loads 5 files, and it speaks PSR-7, PSR-15 and PSR-17 when you need them.</p>
+        <div class="install">
+          <code id="install-cmd">composer require pauldeano/dromos</code>
+          <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy the install command">Copy</button>
+        </div>
+        <div class="ctas">
+          <a class="btn primary" href="#quick-start">Build an API</a>
+          <a class="btn" href="https://github.com/p4u1d34n0/Dromos" rel="noopener">View on GitHub</a>
+        </div>
+      </div>
+      <figure class="hero-art">
+        <picture>
+          <img src="/assets/dromos-logo-440.webp" srcset="/assets/dromos-logo-300.webp 300w, /assets/dromos-logo-440.webp 440w, /assets/dromos-logo.webp 560w" sizes="(max-width: 960px) min(70vw, 300px), 440px" width="560" height="546" alt="Dromos, superlight PHP router logo" fetchpriority="high">
+        </picture>
+        <figcaption><span lang="el">δρόμος</span> <span class="muted">(drómos), Greek for a racecourse</span></figcaption>
+      </figure>
+    </div>
+    <div class="wrap"><div class="stats" role="list">
+      <div class="stat" role="listitem"><b>0.83<small> µs</small></b><span>a request at 2,000 routes, in a worker</span></div>
+      <div class="stat" role="listitem"><b>1.74<small> µs</small></b><span>a cached PHP-FPM request</span></div>
+      <div class="stat" role="listitem"><b>5</b><span>files loaded in lean mode</span></div>
+      <div class="stat" role="listitem"><b>1.2M</b><span>routes matched a second, one core</span></div>
+    </div></div>
+  </section>
+
+  <section id="benchmarks" class="section">
+    <div class="wrap">
+      <p class="eyebrow">PHP router benchmarks</p>
+      <h2>Eight PHP routers, one racecourse</h2>
+      <p class="intro">The same routes in every router, timed on the same machine. Each lane is the time to route one request to a route with a parameter; shorter is faster. Pick a race:</p>
+
+      <div class="race-controls" role="tablist" aria-label="Benchmark scenario">
+        <button role="tab" type="button" aria-controls="track" aria-selected="true" data-race="w2000">Worker, 2,000 routes</button>
+        <button role="tab" type="button" aria-controls="track" aria-selected="false" data-race="w20">Worker, 20 routes</button>
+        <button role="tab" type="button" aria-controls="track" aria-selected="false" data-race="f2000">PHP-FPM cached, 2,000</button>
+        <button role="tab" type="button" aria-controls="track" aria-selected="false" data-race="f20">PHP-FPM cached, 20</button>
+      </div>
+
+      <div class="track" id="track" role="tabpanel" aria-live="polite">
+        <ol class="lanes" id="lanes">
+          <li class="lane us"><span class="pos">1</span><span class="name">Dromos lean</span><span class="run"><i style="--w:18.4%"></i></span><span class="t">0.83 µs</span><span class="rps">1.2M/s</span></li>
+          <li class="lane"><span class="pos">2</span><span class="name">Symfony Routing</span><span class="run"><i style="--w:22.7%"></i></span><span class="t">1.36 µs</span><span class="rps">735k/s</span></li>
+          <li class="lane us"><span class="pos">3</span><span class="name">Dromos full</span><span class="run"><i style="--w:27.7%"></i></span><span class="t">2.43 µs</span><span class="rps">412k/s</span></li>
+          <li class="lane"><span class="pos">4</span><span class="name">FastRoute</span><span class="run"><i style="--w:44.5%"></i></span><span class="t">16.7 µs</span><span class="rps">60k/s</span></li>
+          <li class="lane"><span class="pos">5</span><span class="name">Slim</span><span class="run"><i style="--w:49.3%"></i></span><span class="t">29.1 µs</span><span class="rps">34k/s</span></li>
+          <li class="lane"><span class="pos">6</span><span class="name">Laravel</span><span class="run"><i style="--w:52.3%"></i></span><span class="t">41.1 µs</span><span class="rps">24k/s</span></li>
+          <li class="lane"><span class="pos">7</span><span class="name">Mezzio</span><span class="run"><i style="--w:63.0%"></i></span><span class="t">141 µs</span><span class="rps">7.1k/s</span></li>
+          <li class="lane"><span class="pos">8</span><span class="name">Flight</span><span class="run"><i style="--w:82.8%"></i></span><span class="t">1,373 µs</span><span class="rps">728/s</span></li>
+        </ol>
+        <p class="track-note" id="track-note">At 2,000 routes Dromos lean is the fastest of all eight. FastRoute is 27 times slower here than with 20 routes.</p>
+      </div>
+      <p class="scale-note">Log scale. µs per request, median of 5 runs. "/s" is requests routed a second on one core, routing work only.</p>
+
+      <div class="table-scroll">
+        <table>
+          <caption>PHP router benchmark: µs per request to a route with a parameter (lower is better)</caption>
+          <thead>
+            <tr><th scope="col">Router</th><th scope="col">Worker, 20 routes</th><th scope="col">Worker, 2,000 routes</th><th scope="col">PHP-FPM cached, 20</th><th scope="col">PHP-FPM cached, 2,000</th><th scope="col">Files loaded</th></tr>
+          </thead>
+          <tbody>
+            <tr class="us"><th scope="row">Dromos lean</th><td>0.81</td><td>0.83</td><td>1.73</td><td>1.74</td><td>5</td></tr>
+            <tr class="us"><th scope="row">Dromos</th><td>2.40</td><td>2.43</td><td>4.46</td><td>4.45</td><td>25</td></tr>
+            <tr><th scope="row">Symfony Routing</th><td>0.87</td><td>1.36</td><td>1.66</td><td>2.16</td><td>10</td></tr>
+            <tr><th scope="row">FastRoute</th><td>0.61</td><td>16.7</td><td>2.21</td><td>20.5</td><td>10</td></tr>
+            <tr><th scope="row">Laravel</th><td>39.9</td><td>41.1</td><td>63.8</td><td>66.3</td><td>75</td></tr>
+            <tr><th scope="row">Slim</th><td>11.1</td><td>29.1</td><td>47.1</td><td>1,653</td><td>68</td></tr>
+            <tr><th scope="row">Mezzio</th><td>11.5</td><td>141</td><td>72.6</td><td>2,925</td><td>103</td></tr>
+            <tr><th scope="row">Flight</th><td>25.8</td><td>1,373</td><td>74.4*</td><td>4,889*</td><td>10</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine">* Flight has no route cache. FastRoute and Symfony Routing only match routes; Dromos lean does the same, then calls the controller. Full Dromos also builds PSR-7 requests and responses and runs middleware.</p>
+
+      <details class="method">
+        <summary>How it's measured</summary>
+        <ul>
+          <li><strong>Routes:</strong> 5, 50 or 500 resources with four controller routes each (<code>GET /res{n}</code>, <code>GET /res{n}/{id}</code>, <code>GET /res{n}/{id}/items/{item}</code>, <code>POST /res{n}</code>), so 20, 200 or 2,000 routes. Each test requests a route of the last resource registered, the worst case for routers that try routes in turn.</li>
+          <li><strong>Correctness:</strong> before anything is timed, every router must return the expected status and JSON body for every request, or the run stops.</li>
+          <li><strong>Setup:</strong> each router as its documentation recommends, with its own route cache where it has one. Laravel is <code>illuminate/routing</code> on its own, without the rest of the framework.</li>
+          <li><strong>Worker:</strong> the router is booted once, then requests are timed one after another, as under OpenSwoole, RoadRunner or FrankenPHP.</li>
+          <li><strong>PHP-FPM cached:</strong> each iteration creates a new router, loads its routes from its cache and handles one request, in one process with opcache on.</li>
+          <li><strong>Timing:</strong> 5 rounds of 60 ms per test with <code>hrtime()</code>, each script run 5 times in a fresh process; the figure is the median.</li>
+          <li><strong>Machine:</strong> Apple M3 Pro, macOS, PHP 8.4.4 with opcache, no JIT, no Xdebug. Run it yourself from <a href="https://github.com/p4u1d34n0/Dromos/tree/main/benchmark/compare" rel="noopener"><code>benchmark/compare</code></a>; the <a href="https://github.com/p4u1d34n0/Dromos/blob/main/benchmark/compare/README.md" rel="noopener">full report</a> has every test, real HTTP requests and every sample.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section id="why" class="section alt">
+    <div class="wrap">
+      <p class="eyebrow">Why Dromos</p>
+      <h2>A lightweight PHP router that stays fast as your API grows</h2>
+      <div class="why-grid">
+        <article class="why">
+          <h3>Flat at any route count</h3>
+          <p>Most PHP routers slow down as you add routes. FastRoute tries its routes in batches of about ten, so at 2,000 routes it's 27 times slower than at 20. Dromos finds exact paths with a hash lookup and groups routes with placeholders by their static prefix, so <code>/users/42</code> is only tested against the routes under <code>/users</code>.</p>
+          <div class="flat" aria-hidden="true">
+            <div><span>20 routes</span><i style="--w:12%"></i><em>0.81</em></div>
+            <div><span>200</span><i style="--w:12%"></i><em>0.82</em></div>
+            <div><span>2,000</span><i style="--w:12.3%"></i><em>0.83</em></div>
+          </div>
+        </article>
+        <article class="why">
+          <h3>Lean when you want it, PSR when you need it</h3>
+          <p><code>Router::match()</code> only finds the route and leaves the rest to you, which is all many APIs need. <code>Router::handle()</code> gives you PSR-7 requests and responses and runs Dromos or PSR-15 middleware. Both share one route table and one cache, so you can start lean and add middleware later.</p>
+        </article>
+        <article class="why">
+          <h3>A route cache that stays correct</h3>
+          <p>Under PHP-FPM, <code>Router::loadRoutes()</code> keeps your compiled routes in a PHP file that opcache holds in memory, so a request touches no file. It rebuilds itself when your routes change, at the moment PHP notices changed code, so it never serves stale routes.</p>
+        </article>
+        <article class="why">
+          <h3>Small enough to read in an afternoon</h3>
+          <p>Lean mode is 5 files and 834 lines in 368 KB of memory. Full mode is 25 files, a third of them PSR-7 interfaces. Laravel's router loads 75 files and 26,248 lines. The only dependencies are the four PSR interface packages.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="quick-start" class="section">
+    <div class="wrap qs-grid">
+      <div>
+        <p class="eyebrow">Quick start</p>
+        <h2>Build a fast PHP API in three files</h2>
+        <ol class="steps">
+          <li><span>Install it with Composer. Dromos needs PHP 8.2 or later.</span></li>
+          <li><span>Register your routes in <code>routes.php</code>. Give controllers as <code>[Class::class, 'method']</code> so they can be cached.</span></li>
+          <li><span>Load them in your front controller, then either match and call the handler yourself, or let Dromos handle the request with middleware.</span></li>
+        </ol>
+        <p class="muted small">Route parameters arrive as method arguments by name. A placeholder matches one path segment, and routes match in the order you register them.</p>
+      </div>
+
+      <div class="code-card">
+        <div class="tabs">
+          <div class="tablist" role="tablist" aria-label="Example files">
+          <button role="tab" type="button" aria-selected="true" aria-controls="code-routes" id="tab-routes">routes.php</button>
+          <button role="tab" type="button" aria-selected="false" aria-controls="code-lean" id="tab-lean">index.php · lean</button>
+          <button role="tab" type="button" aria-selected="false" aria-controls="code-full" id="tab-full">index.php · full</button>
+          </div>
+          <button class="copy" type="button" data-copy-active aria-label="Copy this file">Copy</button>
+        </div>
+<pre id="code-routes" role="tabpanel" aria-labelledby="tab-routes"><code><span class="k">use</span> Dromos\Router;
+
+Router::<span class="f">Get</span>(<span class="s">'/users'</span>, [UserController::<span class="k">class</span>, <span class="s">'index'</span>]);
+Router::<span class="f">Get</span>(<span class="s">'/users/{id}'</span>, [UserController::<span class="k">class</span>, <span class="s">'show'</span>]);
+Router::<span class="f">Post</span>(<span class="s">'/users'</span>, [UserController::<span class="k">class</span>, <span class="s">'store'</span>]);
+
+Router::<span class="f">group</span>(<span class="s">'/admin'</span>, <span class="k">function</span> (<span class="v">$group</span>) {
+    <span class="v">$group</span>-&gt;<span class="f">middleware</span>(RequireAdmin::<span class="k">class</span>);
+    <span class="v">$group</span>-&gt;<span class="f">get</span>(<span class="s">'/stats'</span>, [StatsController::<span class="k">class</span>, <span class="s">'index'</span>]);
+});</code></pre>
+<pre id="code-lean" role="tabpanel" aria-labelledby="tab-lean" hidden><code><span class="c">// public/index.php: match, then call the controller yourself</span>
+<span class="k">use</span> Dromos\Router;
+
+Router::<span class="f">loadRoutes</span>(<span class="k">__DIR__</span> . <span class="s">'/../routes.php'</span>, <span class="k">__DIR__</span> . <span class="s">'/../storage/cache/routes.php'</span>);
+
+<span class="v">$path</span>  = (<span class="k">string</span>) <span class="f">parse_url</span>(<span class="v">$_SERVER</span>[<span class="s">'REQUEST_URI'</span>], <span class="k">PHP_URL_PATH</span>);
+<span class="v">$route</span> = Router::<span class="f">match</span>(<span class="v">$_SERVER</span>[<span class="s">'REQUEST_METHOD'</span>], <span class="v">$path</span>);
+
+<span class="k">switch</span> (<span class="v">$route</span>[<span class="n">0</span>]) {
+    <span class="k">case</span> <span class="n">200</span>:
+        [, [<span class="v">$class</span>, <span class="v">$action</span>], <span class="v">$params</span>] = <span class="v">$route</span>;
+        <span class="f">header</span>(<span class="s">'Content-Type: application/json'</span>);
+        <span class="k">echo</span> <span class="f">json_encode</span>((<span class="k">new</span> <span class="v">$class</span>())-&gt;{<span class="v">$action</span>}(...<span class="v">$params</span>));
+        <span class="k">break</span>;
+    <span class="k">case</span> <span class="n">405</span>:
+        <span class="f">http_response_code</span>(<span class="n">405</span>);
+        <span class="f">header</span>(<span class="s">'Allow: '</span> . <span class="f">implode</span>(<span class="s">', '</span>, <span class="v">$route</span>[<span class="n">1</span>]));
+        <span class="k">break</span>;
+    <span class="k">default</span>:
+        <span class="f">http_response_code</span>(<span class="n">404</span>);
+}</code></pre>
+<pre id="code-full" role="tabpanel" aria-labelledby="tab-full" hidden><code><span class="c">// public/index.php: PSR-7 request and response, with middleware</span>
+<span class="k">use</span> Dromos\Router;
+<span class="k">use</span> Dromos\Http\Request;
+<span class="k">use</span> Dromos\Http\Emitter\Emitter;
+<span class="k">use</span> Dromos\Middleware\CorsMiddleware;
+
+Router::<span class="f">loadRoutes</span>(<span class="k">__DIR__</span> . <span class="s">'/../routes.php'</span>, <span class="k">__DIR__</span> . <span class="s">'/../storage/cache/routes.php'</span>);
+
+<span class="v">$router</span> = <span class="k">new</span> Router();
+<span class="v">$router</span>-&gt;<span class="f">addMiddleware</span>(<span class="k">new</span> CorsMiddleware());
+
+(<span class="k">new</span> Emitter())-&gt;<span class="f">emit</span>(<span class="v">$router</span>-&gt;<span class="f">handle</span>(<span class="k">new</span> Request()));
+
+<span class="c">// UserController::show(Response $response, string $id)</span>
+<span class="c">//   return $response-&gt;json(['id' =&gt; $id]);</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="section alt">
+    <div class="wrap">
+      <p class="eyebrow">Features</p>
+      <h2>Everything a PHP API router needs, nothing it doesn't</h2>
+      <ul class="features">
+        <li><h3>Routing</h3><p>Route parameters, groups with shared middleware, resource routes, and a 405 with an <code>Allow</code> header when only the method is wrong.</p></li>
+        <li><h3>Lean mode</h3><p><code>Router::match()</code> returns <code>[200, $handler, $params, $middleware]</code>, <code>[404]</code> or <code>[405, $allowed]</code>, the shape FastRoute uses.</p></li>
+        <li><h3>Route caching</h3><p>A cached routes file for controller routes and a compiled table for closures. Both rebuild themselves.</p></li>
+        <li><h3>PSR-7, PSR-15, PSR-17</h3><p>Messages pass the PSR-7 integration tests, PSR-15 middleware runs as is, and <code>HttpFactory</code> passes the PSR-17 factory tests.</p></li>
+        <li><h3>Middleware included</h3><p>CORS, authentication and rate limiting, globally, per group or per route.</p></li>
+        <li><h3>JSON first</h3><p>JSON body parsing, JSON error responses, response helpers and input validation with rules like <code>required|email</code>.</p></li>
+        <li><h3>Your container</h3><p>Build controllers from any dependency injection container through <code>ControllerResolverInterface</code>.</p></li>
+        <li><h3>PHP-FPM and workers</h3><p>Opcache preloading for PHP-FPM, an emitter for OpenSwoole, and <code>EmitterInterface</code> for any other runtime.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="faq" class="section">
+    <div class="wrap narrow">
+      <p class="eyebrow">FAQ</p>
+      <h2>PHP router questions, answered with numbers</h2>
+      <div class="faq">
+        <details open>
+          <summary><h3>What is the fastest PHP router?</h3></summary>
+          <p>Of the eight PHP routers in our benchmark (Dromos, Dromos lean mode, FastRoute, Symfony Routing, Laravel, Slim, Mezzio and Flight), Dromos in lean mode is the fastest in every in-process test at 2,000 routes: 0.83 µs for a request to a route with a parameter, against 1.36 µs for Symfony Routing and 16.7 µs for FastRoute. With only 20 routes, FastRoute and Symfony win some tests by a fraction of a microsecond. Routers written in C, such as Phalcon's, weren't measured.</p>
+        </details>
+        <details>
+          <summary><h3>Is Dromos faster than FastRoute?</h3></summary>
+          <p>From 200 routes up, yes, in every test measured. FastRoute tries its routes in batches of about ten, so it slows down as routes are added: at 2,000 routes it takes 16.7 µs for a route with a parameter, where Dromos takes 0.83 µs. With 20 routes, FastRoute is up to 0.33 µs faster for routes with parameters and 404s.</p>
+        </details>
+        <details>
+          <summary><h3>Is Dromos faster than Laravel routing?</h3></summary>
+          <p>Yes, in every test measured. A request to a route with a parameter takes 41.1 µs in Laravel's router (<code>illuminate/routing</code> on its own) at 2,000 routes, against 0.83 µs in Dromos lean mode and 2.43 µs in full Dromos with PSR-7 requests and middleware. Laravel's router loads 75 files; Dromos loads 5 in lean mode.</p>
+        </details>
+        <details>
+          <summary><h3>Does Dromos support PSR-7, PSR-15 and PSR-17?</h3></summary>
+          <p>Yes. Its requests, responses, streams and URIs implement PSR-7 and pass the <a href="https://github.com/php-http/psr7-integration-tests" rel="noopener">php-http PSR-7 integration tests</a>. PSR-15 middleware from any package runs alongside Dromos middleware, and <code>HttpFactory</code> implements all six PSR-17 factories and passes the <a href="https://github.com/http-interop/http-factory-tests" rel="noopener">http-interop factory tests</a>.</p>
+        </details>
+        <details>
+          <summary><h3>Can I use Dromos with OpenSwoole, RoadRunner or FrankenPHP?</h3></summary>
+          <p>Dromos runs in any long-running PHP worker: routes are compiled once and reused for every request. It ships an emitter for OpenSwoole, and you can implement <code>EmitterInterface</code> to send responses on other runtimes. It also runs under PHP-FPM, where its opcache route cache keeps routing to about 1.7 µs a request.</p>
+        </details>
+        <details>
+          <summary><h3>What does Dromos need to run?</h3></summary>
+          <p>PHP 8.2 or later. Its only dependencies are the four PSR interface packages: <code>psr/http-message</code>, <code>psr/http-server-handler</code>, <code>psr/http-server-middleware</code> and <code>psr/http-factory</code>. Install it with <code>composer require pauldeano/dromos</code>. It's free and MIT licensed.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section cta-band">
+    <div class="wrap cta-inner">
+      <h2>Put your API on the fast lane</h2>
+      <div class="install">
+        <code id="install-cmd-2">composer require pauldeano/dromos</code>
+        <button class="copy" type="button" data-copy="#install-cmd-2" aria-label="Copy the install command">Copy</button>
+      </div>
+      <div class="ctas">
+        <a class="btn primary" href="https://github.com/p4u1d34n0/Dromos#readme" rel="noopener">Read the docs</a>
+        <a class="btn" href="https://packagist.org/packages/pauldeano/dromos" rel="noopener">Packagist</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap foot">
+    <a class="brand" href="/"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg><span>dromos</span></a>
+    <p>A fast, lightweight PHP router for APIs. MIT licensed, made by <a href="https://github.com/p4u1d34n0" rel="noopener author">Paul Dean</a>.</p>
+    <ul>
+      <li><a href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      <li><a href="https://packagist.org/packages/pauldeano/dromos" rel="noopener">Packagist</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/releases" rel="noopener">Releases</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/blob/main/benchmark/compare/README.md" rel="noopener">Benchmark report</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=2" defer></script>
+</body>
+</html>

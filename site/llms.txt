@@ -10,6 +10,11 @@
 - Lean mode loads 5 files (834 lines). Full mode, with PSR-7 messages and middleware, loads 25 files. Dependencies: the four PSR interface packages only.
 - Full mode (`Router::handle()`) builds PSR-7 requests and responses and runs Dromos or PSR-15 middleware. The messages pass the php-http PSR-7 integration tests; `HttpFactory` passes the http-interop PSR-17 factory tests.
 
+## Guides
+
+- [Using Doctrine with Dromos](https://dromos.codenexis.com/guides/doctrine/): inject the EntityManager through a controller resolver (plain or PHP-DI); under OpenSwoole, clear it after each request and replace it if a failed flush closed it
+- [HTML templates and HTMX](https://dromos.codenexis.com/guides/templates/): Twig, Latte or Blade rendered with `$response->html()`; HTMX pages where one route returns the full page or, with the `HX-Request` header, just the fragment
+
 ## Links
 
 - [Source and documentation](https://github.com/p4u1d34n0/Dromos): README with routing, middleware, caching and emitter docs

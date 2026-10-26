@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Twig, Latte and HTMX with a fast PHP router | Dromos guide</title>
+<meta name="description" content="Render HTML from Dromos, a fast PHP router: choose between Twig, Latte and Blade, wire the engine into controllers, and build pages that update in place with HTMX.">
+<link rel="canonical" href="https://dromos.codenexis.com/guides/templates/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Paul Dean">
+<meta name="theme-color" content="#241e2b">
+<meta name="color-scheme" content="dark">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Dromos">
+<meta property="og:url" content="https://dromos.codenexis.com/guides/templates/">
+<meta property="og:title" content="HTML templates and HTMX with Dromos">
+<meta property="og:description" content="Render HTML from Dromos, a fast PHP router: choose between Twig, Latte and Blade, wire the engine into controllers, and build pages that update in place with HTMX.">
+<meta property="og:image" content="https://dromos.codenexis.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HTML templates and HTMX with Dromos">
+<meta name="twitter:description" content="Render HTML from Dromos, a fast PHP router: choose between Twig, Latte and Blade, wire the engine into controllers, and build pages that update in place with HTMX.">
+<meta name="twitter:image" content="https://dromos.codenexis.com/assets/og-image.png">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/assets/fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://dromos.codenexis.com/guides/templates/#article",
+      "headline": "HTML templates and HTMX with Dromos",
+      "description": "Render HTML from Dromos, a fast PHP router: choose between Twig, Latte and Blade, wire the engine into controllers, and build pages that update in place with HTMX.",
+      "url": "https://dromos.codenexis.com/guides/templates/",
+      "inLanguage": "en-GB",
+      "datePublished": "2026-10-26",
+      "dateModified": "2026-10-26",
+      "author": {
+        "@id": "https://dromos.codenexis.com/#author"
+      },
+      "publisher": {
+        "@id": "https://dromos.codenexis.com/#author"
+      },
+      "isPartOf": {
+        "@id": "https://dromos.codenexis.com/#website"
+      },
+      "about": {
+        "@id": "https://dromos.codenexis.com/#software"
+      },
+      "proficiencyLevel": "Intermediate",
+      "keywords": "PHP router Twig, PHP router HTMX, Latte templates, PHP HTMX server-side rendering, Twig HTMX",
+      "image": "https://dromos.codenexis.com/assets/og-image.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Dromos",
+          "item": "https://dromos.codenexis.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Guides",
+          "item": "https://dromos.codenexis.com/#guides"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "HTML templates and HTMX with Dromos",
+          "item": "https://dromos.codenexis.com/guides/templates/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/" aria-label="Dromos home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg>
+      <span>dromos</span>
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="/#benchmarks">Benchmarks</a></li>
+        <li><a href="/#quick-start">Quick start</a></li>
+        <li><a href="/#guides">Guides</a></li>
+        <li><a href="/#faq">FAQ</a></li>
+        <li><a class="gh" href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 32 32">
+    <rect x="2" y="5" width="28" height="3" rx="1.5" fill="#3ec5ff"/>
+    <rect x="6" y="11" width="24" height="3" rx="1.5" fill="#ffc22e"/>
+    <rect x="10" y="17" width="20" height="3" rx="1.5" fill="#ff8a3d"/>
+    <rect x="14" y="23" width="16" height="3" rx="1.5" fill="#ff4a5a"/>
+  </symbol>
+</svg>
+
+<main id="main">
+  <section class="guide-hero">
+    <div class="wrap narrow">
+      <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Dromos</a></li><li><a href="/#guides">Guides</a></li><li aria-current="page">HTML templates and HTMX with Dromos</li></ol></nav>
+      <p class="eyebrow">Guide · HTML</p>
+      <h1>HTML templates and HTMX with Dromos</h1>
+      <p class="lede">Render pages with Twig or Latte, and use HTMX so one route serves the full page on first load and just the fragment after that.</p>
+    </div>
+  </section>
+
+  <div class="wrap narrow guide-layout">
+    <nav class="toc" aria-label="On this page">
+      <p class="eyebrow">On this page</p>
+      <ol><li><a href="#choosing-an-engine">Choosing an engine</a></li><li><a href="#wiring-in-twig">Wiring in Twig</a></li><li><a href="#htmx">HTMX</a></li></ol>
+    </nav>
+    <article class="guide">
+<p>Dromos doesn't come with a template engine, so you can use any of them. A controller renders a template to a string and returns it with <code>$response-&gt;html()</code>, which sets <code>Content-Type: text/html</code>.</p>
+<p>The examples were tested with Twig 3.30, Latte 3.1 and PHP-DI 7.1 on PHP 8.4.</p>
+<h2 id="choosing-an-engine">Choosing an engine</h2>
+<div class="table-scroll guide-table"><table><thead><tr><th scope="col">Engine</th><th scope="col">Why people pick it</th><th scope="col">Install</th></tr></thead><tbody><tr><th scope="row"><a href="https://twig.symfony.com/" rel="noopener">Twig</a></th><td>The most widely used standalone engine, and Symfony's. Template inheritance, escaping on by default, good editor support, and fast once compiled.</td><td><code>composer require twig/twig</code></td></tr><tr><th scope="row"><a href="https://latte.nette.org/" rel="noopener">Latte</a></th><td>Escapes by context: it knows whether a value lands in HTML, an attribute, JavaScript or a URL. <code>n:</code> attributes keep loops and conditions on the tags they control.</td><td><code>composer require latte/latte</code></td></tr><tr><th scope="row"><a href="https://laravel.com/docs/blade" rel="noopener">Blade</a></th><td>Familiar if your team knows Laravel. Usable on its own through <code>illuminate/view</code>, but that pulls in several Laravel packages, so it adds more weight than the others.</td><td><code>composer require illuminate/view</code></td></tr></tbody></table></div>
+<p>Twig:</p>
+<div class="code-card"><div class="code-head"><span>twig</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code>{% extends "layout.html.twig" %}
+
+{% block content %}
+  &lt;h1&gt;Books&lt;/h1&gt;
+  &lt;ul&gt;
+    {% for book in books %}
+      &lt;li&gt;{{ book.title }}&lt;/li&gt;
+    {% else %}
+      &lt;li&gt;No books yet.&lt;/li&gt;
+    {% endfor %}
+  &lt;/ul&gt;
+{% endblock %}</code></pre></div>
+<p>Latte:</p>
+<div class="code-card"><div class="code-head"><span>latte</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code>&lt;ul n:if="$books"&gt;
+  &lt;li n:foreach="$books as $book" title="{$book-&gt;title}"&gt;{$book-&gt;title}&lt;/li&gt;
+&lt;/ul&gt;</code></pre></div>
+<h2 id="wiring-in-twig">Wiring in Twig</h2>
+<p>Create the Twig environment once, with a cache directory so templates compile only once:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> Twig\Environment;
+<span class="k">use</span> Twig\Loader\FilesystemLoader;
+
+<span class="v">$twig</span> = <span class="k">new</span> <span class="f">Environment</span>(<span class="k">new</span> <span class="f">FilesystemLoader</span>(__DIR__ . <span class="s">'/templates'</span>), [
+    <span class="s">'cache'</span> =&gt; __DIR__ . <span class="s">'/var/cache/twig'</span>,
+]);</code></pre></div>
+<p>The controller asks for it in its constructor:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> App\Repository\BookRepository;
+<span class="k">use</span> Dromos\Http\Response;
+<span class="k">use</span> Twig\Environment;
+
+<span class="k">final</span> <span class="k">class</span> BookController
+{
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> Environment <span class="v">$twig</span>, <span class="k">private</span> BookRepository <span class="v">$books</span>) {}
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">index</span>(Response <span class="v">$response</span>): Response
+    {
+        <span class="v">$books</span> = <span class="v">$this</span>-&gt;books-&gt;<span class="f">all</span>();
+
+        <span class="k">return</span> <span class="v">$response</span>-&gt;<span class="f">html</span>(<span class="v">$this</span>-&gt;twig-&gt;<span class="f">render</span>(<span class="s">'books.html.twig'</span>, [<span class="s">'books'</span> =&gt; <span class="v">$books</span>]));
+    }
+}</code></pre></div>
+<p>Controllers get constructor arguments through a controller resolver, as described in <a href="/guides/doctrine/#give-controllers-the-entitymanager">Using Doctrine with Dromos</a>. With PHP-DI it's one line:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="v">$container</span> = <span class="k">new</span> DI\<span class="f">Container</span>([Environment::<span class="k">class</span> =&gt; <span class="v">$twig</span>]);
+
+Router::<span class="f">setControllerResolver</span>(<span class="k">new</span> <span class="f">ContainerControllerResolver</span>(<span class="v">$container</span>));</code></pre></div>
+<p>Latte works the same way: create one <code>Latte\Engine</code>, give it a temp directory with <code>setTempDirectory()</code>, and return <code>$latte-&gt;renderToString($file, $params)</code>.</p>
+<p>Under OpenSwoole, create the engine once per worker and reuse it. Unlike Doctrine's <code>EntityManager</code>, a template engine keeps no state between requests, so sharing it is safe.</p>
+<h2 id="htmx">HTMX</h2>
+<p><a href="https://htmx.org/" rel="noopener">HTMX</a> lets HTML attributes fetch a fragment from the server and swap it into the page. You get pages that update in place without a JavaScript framework or a build step, and the server stays in charge of the HTML.</p>
+<p>An HTMX page makes many small requests, one for each update, and that's the kind of traffic Dromos is fastest at.</p>
+<p>This search box asks the server for a new list as you type:</p>
+<div class="code-card"><div class="code-head"><span>twig</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code>{% extends "layout.html.twig" %}
+
+{% block content %}
+  &lt;h1&gt;Books&lt;/h1&gt;
+  &lt;input type="search" name="q" hx-get="/shelf" hx-trigger="input changed delay:300ms" hx-target="#books"&gt;
+  &lt;div id="books"&gt;
+    {% include "_book-list.html.twig" %}
+  &lt;/div&gt;
+{% endblock %}</code></pre></div>
+<p>HTMX sends an <code>HX-Request: true</code> header with every request it makes, so one controller method can return the whole page on first load and only the list after that:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> Dromos\Http\Request;
+<span class="k">use</span> Dromos\Http\Response;
+
+<span class="k">public</span> <span class="k">function</span> <span class="f">index</span>(Request <span class="v">$request</span>, Response <span class="v">$response</span>): Response
+{
+    <span class="v">$books</span> = <span class="v">$this</span>-&gt;books-&gt;<span class="f">search</span>(<span class="v">$request</span>-&gt;<span class="f">getQueryParams</span>()[<span class="s">'q'</span>] ?? <span class="s">''</span>);
+
+    <span class="v">$template</span> = <span class="v">$request</span>-&gt;<span class="f">getHeaderLine</span>(<span class="s">'HX-Request'</span>) === <span class="s">'true'</span>
+        ? <span class="s">'_book-list.html.twig'</span>
+        : <span class="s">'shelf.html.twig'</span>;
+
+    <span class="k">return</span> <span class="v">$response</span>-&gt;<span class="f">html</span>(<span class="v">$this</span>-&gt;twig-&gt;<span class="f">render</span>(<span class="v">$template</span>, [<span class="s">'books'</span> =&gt; <span class="v">$books</span>]));
+}</code></pre></div>
+<p>For small things that need no server at all, such as menus and toggles, <a href="https://alpinejs.dev/" rel="noopener">Alpine.js</a> pairs well with HTMX.</p>
+<p>If you want a well-documented default, use Twig with HTMX. If you want the strongest escaping, use Latte with HTMX.</p>
+      <aside class="next-guide">
+        <p class="eyebrow">Next guide</p>
+        <a href="/guides/doctrine/">Using Doctrine with Dromos</a>
+      </aside>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap foot">
+    <a class="brand" href="/"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg><span>dromos</span></a>
+    <p>A fast, lightweight PHP router for APIs. MIT licensed, made by <a href="https://github.com/p4u1d34n0" rel="noopener author">Paul Dean</a>.</p>
+    <ul>
+      <li><a href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      <li><a href="https://packagist.org/packages/pauldeano/dromos" rel="noopener">Packagist</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/releases" rel="noopener">Releases</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/blob/main/docs/guides/templates.md" rel="noopener">Edit this guide</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=3" defer></script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doctrine ORM with a fast PHP router | Dromos guide</title>
+<meta name="description" content="Use Doctrine ORM with Dromos, a fast PHP router for APIs: inject the EntityManager into controllers, use PHP-DI, and keep Doctrine healthy under OpenSwoole.">
+<link rel="canonical" href="https://dromos.codenexis.com/guides/doctrine/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Paul Dean">
+<meta name="theme-color" content="#241e2b">
+<meta name="color-scheme" content="dark">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Dromos">
+<meta property="og:url" content="https://dromos.codenexis.com/guides/doctrine/">
+<meta property="og:title" content="Using Doctrine with Dromos">
+<meta property="og:description" content="Use Doctrine ORM with Dromos, a fast PHP router for APIs: inject the EntityManager into controllers, use PHP-DI, and keep Doctrine healthy under OpenSwoole.">
+<meta property="og:image" content="https://dromos.codenexis.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Using Doctrine with Dromos">
+<meta name="twitter:description" content="Use Doctrine ORM with Dromos, a fast PHP router for APIs: inject the EntityManager into controllers, use PHP-DI, and keep Doctrine healthy under OpenSwoole.">
+<meta name="twitter:image" content="https://dromos.codenexis.com/assets/og-image.png">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/assets/fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=3">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://dromos.codenexis.com/guides/doctrine/#article",
+      "headline": "Using Doctrine with Dromos",
+      "description": "Use Doctrine ORM with Dromos, a fast PHP router for APIs: inject the EntityManager into controllers, use PHP-DI, and keep Doctrine healthy under OpenSwoole.",
+      "url": "https://dromos.codenexis.com/guides/doctrine/",
+      "inLanguage": "en-GB",
+      "datePublished": "2026-10-26",
+      "dateModified": "2026-10-26",
+      "author": {
+        "@id": "https://dromos.codenexis.com/#author"
+      },
+      "publisher": {
+        "@id": "https://dromos.codenexis.com/#author"
+      },
+      "isPartOf": {
+        "@id": "https://dromos.codenexis.com/#website"
+      },
+      "about": {
+        "@id": "https://dromos.codenexis.com/#software"
+      },
+      "proficiencyLevel": "Intermediate",
+      "keywords": "PHP router Doctrine, Doctrine ORM API, Doctrine OpenSwoole, EntityManager clear, PHP-DI controller resolver",
+      "image": "https://dromos.codenexis.com/assets/og-image.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Dromos",
+          "item": "https://dromos.codenexis.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Guides",
+          "item": "https://dromos.codenexis.com/#guides"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Using Doctrine with Dromos",
+          "item": "https://dromos.codenexis.com/guides/doctrine/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/" aria-label="Dromos home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg>
+      <span>dromos</span>
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="/#benchmarks">Benchmarks</a></li>
+        <li><a href="/#quick-start">Quick start</a></li>
+        <li><a href="/#guides">Guides</a></li>
+        <li><a href="/#faq">FAQ</a></li>
+        <li><a class="gh" href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 32 32">
+    <rect x="2" y="5" width="28" height="3" rx="1.5" fill="#3ec5ff"/>
+    <rect x="6" y="11" width="24" height="3" rx="1.5" fill="#ffc22e"/>
+    <rect x="10" y="17" width="20" height="3" rx="1.5" fill="#ff8a3d"/>
+    <rect x="14" y="23" width="16" height="3" rx="1.5" fill="#ff4a5a"/>
+  </symbol>
+</svg>
+
+<main id="main">
+  <section class="guide-hero">
+    <div class="wrap narrow">
+      <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Dromos</a></li><li><a href="/#guides">Guides</a></li><li aria-current="page">Using Doctrine with Dromos</li></ol></nav>
+      <p class="eyebrow">Guide · Database</p>
+      <h1>Using Doctrine with Dromos</h1>
+      <p class="lede">Wire Doctrine ORM into a Dromos API, with or without a container, and keep its EntityManager healthy in long-running OpenSwoole workers.</p>
+    </div>
+  </section>
+
+  <div class="wrap narrow guide-layout">
+    <nav class="toc" aria-label="On this page">
+      <p class="eyebrow">On this page</p>
+      <ol><li><a href="#give-controllers-the-entitymanager">Give controllers the EntityManager</a></li><li><a href="#under-php-fpm">Under PHP-FPM</a></li><li><a href="#under-openswoole">Under OpenSwoole</a></li></ol>
+    </nav>
+    <article class="guide">
+<p>Dromos has no database layer, so Doctrine ORM fits alongside it without conflict. Dromos gets the request to your controller, and Doctrine does the database work inside it.</p>
+<p>The examples were tested with Doctrine ORM 3.7, DBAL 4.5 and PHP-DI 7.1 on PHP 8.4.</p>
+<h2 id="give-controllers-the-entitymanager">Give controllers the EntityManager</h2>
+<p>The default resolver builds controllers with no constructor arguments, so a controller can't receive Doctrine's <code>EntityManager</code> until you register a resolver that passes it in.</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> App\Controller\UserController;
+<span class="k">use</span> Doctrine\ORM\EntityManagerInterface;
+<span class="k">use</span> Dromos\Router;
+<span class="k">use</span> Dromos\Routing\ControllerResolverInterface;
+
+<span class="k">final</span> <span class="k">class</span> AppResolver <span class="k">implements</span> ControllerResolverInterface
+{
+    <span class="k">private</span> <span class="k">array</span> <span class="v">$instances</span> = [];
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> EntityManagerInterface <span class="v">$em</span>) {}
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">resolve</span>(<span class="k">string</span> <span class="v">$class</span>): <span class="k">object</span>
+    {
+        <span class="k">return</span> <span class="v">$this</span>-&gt;instances[<span class="v">$class</span>] ??= <span class="k">match</span> (<span class="v">$class</span>) {
+            UserController::<span class="k">class</span> =&gt; <span class="k">new</span> <span class="f">UserController</span>(<span class="v">$this</span>-&gt;em),
+            <span class="k">default</span> =&gt; <span class="k">new</span> <span class="v">$class</span>(),
+        };
+    }
+}
+
+Router::<span class="f">setControllerResolver</span>(<span class="k">new</span> <span class="f">AppResolver</span>(<span class="v">$entityManager</span>));</code></pre></div>
+<p>The resolver also builds middleware given by class name, which is why the <code>default</code> arm creates everything else with no arguments.</p>
+<p>The controller asks for the route parameter by name, typed as <code>int</code>, and for the response:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> App\Entity\User;
+<span class="k">use</span> Doctrine\ORM\EntityManagerInterface;
+<span class="k">use</span> Dromos\Http\Response;
+
+<span class="k">final</span> <span class="k">class</span> UserController
+{
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> EntityManagerInterface <span class="v">$em</span>) {}
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">show</span>(<span class="k">int</span> <span class="v">$id</span>, Response <span class="v">$response</span>): Response
+    {
+        <span class="v">$user</span> = <span class="v">$this</span>-&gt;em-&gt;<span class="f">find</span>(User::<span class="k">class</span>, <span class="v">$id</span>);
+
+        <span class="k">return</span> <span class="v">$user</span>
+            ? <span class="v">$response</span>-&gt;<span class="f">json</span>([<span class="s">'id'</span> =&gt; <span class="v">$user</span>-&gt;<span class="f">getId</span>(), <span class="s">'name'</span> =&gt; <span class="v">$user</span>-&gt;<span class="f">getName</span>()])
+            : <span class="v">$response</span>-&gt;<span class="f">json</span>([<span class="s">'error'</span> =&gt; <span class="s">'Not found'</span>], <span class="n">404</span>);
+    }
+}</code></pre></div>
+<h3 id="with-a-container">With a container</h3>
+<p>Once you have more than a few controllers, let a container build them. PHP-DI works out constructor arguments by itself, so you only tell it which <code>EntityManager</code> to use:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> Doctrine\ORM\EntityManagerInterface;
+<span class="k">use</span> Dromos\Routing\ControllerResolverInterface;
+<span class="k">use</span> Psr\Container\ContainerInterface;
+
+<span class="k">final</span> <span class="k">class</span> ContainerControllerResolver <span class="k">implements</span> ControllerResolverInterface
+{
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> ContainerInterface <span class="v">$container</span>) {}
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">resolve</span>(<span class="k">string</span> <span class="v">$class</span>): <span class="k">object</span>
+    {
+        <span class="k">return</span> <span class="v">$this</span>-&gt;container-&gt;<span class="f">get</span>(<span class="v">$class</span>);
+    }
+}
+
+<span class="v">$container</span> = <span class="k">new</span> DI\<span class="f">Container</span>([EntityManagerInterface::<span class="k">class</span> =&gt; <span class="v">$entityManager</span>]);
+
+Router::<span class="f">setControllerResolver</span>(<span class="k">new</span> <span class="f">ContainerControllerResolver</span>(<span class="v">$container</span>));</code></pre></div>
+<p>Any PSR-11 container works the same way, including Symfony's DependencyInjection component.</p>
+<h2 id="under-php-fpm">Under PHP-FPM</h2>
+<p>Nothing else to do. PHP-FPM starts every request with fresh state, so Doctrine behaves as it does in any other PHP app.</p>
+<h2 id="under-openswoole">Under OpenSwoole</h2>
+<p>An OpenSwoole worker handles thousands of requests in one process, and Dromos reuses each controller for all of them. Every request in a worker therefore shares one <code>EntityManager</code>, which Doctrine wasn't designed for:</p>
+<ul><li><strong>The identity map keeps growing.</strong> Every entity a request loads stays in memory and goes stale. Call <code>$em-&gt;clear()</code> after each request.</li><li>**A failed write closes the <code>EntityManager</code>.** After an exception during <code>flush()</code>, every later write in that worker fails with "The EntityManager is closed". Reads still work, so this can go unnoticed for a while. Replace the <code>EntityManager</code> when it's closed.</li><li><strong>Connections can time out while a worker is idle.</strong> See <a href="#idle-connections">Idle connections</a>.</li></ul>
+<p>Controllers hold on to the <code>EntityManager</code> they were given, so to replace it you need a wrapper that can swap what's inside. Doctrine's <code>EntityManagerDecorator</code> does most of the work:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> Closure;
+<span class="k">use</span> Doctrine\ORM\Decorator\EntityManagerDecorator;
+<span class="k">use</span> Doctrine\ORM\EntityManagerInterface;
+
+<span class="k">final</span> <span class="k">class</span> ResettableEntityManager <span class="k">extends</span> EntityManagerDecorator
+{
+    <span class="c">/** @param Closure(): EntityManagerInterface $factory */</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> <span class="k">readonly</span> Closure <span class="v">$factory</span>)
+    {
+        parent::<span class="f">__construct</span>(<span class="v">$factory</span>());
+    }
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">resetIfClosed</span>(): <span class="k">void</span>
+    {
+        <span class="k">if</span> (!<span class="v">$this</span>-&gt;wrapped-&gt;<span class="f">isOpen</span>()) {
+            <span class="v">$this</span>-&gt;wrapped = (<span class="v">$this</span>-&gt;factory)();
+        }
+    }
+}</code></pre></div>
+<p>Then a middleware cleans up after every request, whether it succeeded or threw:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="k">use</span> Dromos\Http\Message\ResponseInterface;
+<span class="k">use</span> Dromos\Http\Message\ServerRequestInterface;
+<span class="k">use</span> Dromos\Http\Middleware\MiddlewareInterface;
+<span class="k">use</span> Dromos\Http\Middleware\RequestHandlerInterface;
+
+<span class="k">final</span> <span class="k">class</span> DoctrineRequestScope <span class="k">implements</span> MiddlewareInterface
+{
+    <span class="k">public</span> <span class="k">function</span> <span class="f">__construct</span>(<span class="k">private</span> ResettableEntityManager <span class="v">$em</span>) {}
+
+    <span class="k">public</span> <span class="k">function</span> <span class="f">handle</span>(ServerRequestInterface <span class="v">$request</span>, RequestHandlerInterface <span class="v">$handler</span>): ResponseInterface
+    {
+        <span class="k">try</span> {
+            <span class="k">return</span> <span class="v">$handler</span>-&gt;<span class="f">handle</span>(<span class="v">$request</span>);
+        } <span class="k">finally</span> {
+            <span class="v">$this</span>-&gt;em-&gt;<span class="f">clear</span>();          <span class="c">// forget this request's entities</span>
+            <span class="v">$this</span>-&gt;em-&gt;<span class="f">resetIfClosed</span>();  <span class="c">// replace the EntityManager if an error closed it</span>
+        }
+    }
+}</code></pre></div>
+<p>Create both once per worker, and give controllers the wrapper:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="v">$em</span> = <span class="k">new</span> <span class="f">ResettableEntityManager</span>(<span class="k">fn</span> () =&gt; <span class="k">new</span> <span class="f">EntityManager</span>(
+    DriverManager::<span class="f">getConnection</span>(<span class="v">$dbParams</span>, <span class="v">$config</span>),
+    <span class="v">$config</span>,
+));
+
+Router::<span class="f">setControllerResolver</span>(<span class="k">new</span> <span class="f">AppResolver</span>(<span class="v">$em</span>));
+
+<span class="v">$router</span> = <span class="k">new</span> <span class="f">Router</span>();
+<span class="v">$router</span>-&gt;<span class="f">addMiddleware</span>(<span class="k">new</span> <span class="f">DoctrineRequestScope</span>(<span class="v">$em</span>));</code></pre></div>
+<h3 id="idle-connections">Idle connections</h3>
+<p>If a worker can sit idle for longer than the database's connection timeout, its next query fails. The simplest fix is to close the connection at the end of each request, in the same <code>finally</code> block:</p>
+<div class="code-card"><div class="code-head"><span>php</span><button class="copy" type="button" data-copy-next aria-label="Copy this example">Copy</button></div><pre><code><span class="v">$this</span>-&gt;em-&gt;<span class="f">getConnection</span>()-&gt;<span class="f">close</span>();</code></pre></div>
+<p>DBAL reconnects on the next query. This costs a new connection per request, so only do it if your workers really do go quiet for that long, or put a connection pooler such as PgBouncer or ProxySQL in front of the database.</p>
+      <aside class="next-guide">
+        <p class="eyebrow">Next guide</p>
+        <a href="/guides/templates/">HTML templates and HTMX with Dromos</a>
+      </aside>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap foot">
+    <a class="brand" href="/"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"/></svg><span>dromos</span></a>
+    <p>A fast, lightweight PHP router for APIs. MIT licensed, made by <a href="https://github.com/p4u1d34n0" rel="noopener author">Paul Dean</a>.</p>
+    <ul>
+      <li><a href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
+      <li><a href="https://packagist.org/packages/pauldeano/dromos" rel="noopener">Packagist</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/releases" rel="noopener">Releases</a></li>
+      <li><a href="https://github.com/p4u1d34n0/Dromos/blob/main/docs/guides/doctrine.md" rel="noopener">Edit this guide</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script src="/assets/site.js?v=3" defer></script>
+</body>
+</html>

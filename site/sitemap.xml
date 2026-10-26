@@ -2,6 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://dromos.codenexis.com/</loc>
-    <lastmod>2026-10-25</lastmod>
+    <lastmod>2026-10-26</lastmod>
+  </url>
+  <url>
+    <loc>https://dromos.codenexis.com/guides/doctrine/</loc>
+    <lastmod>2026-10-26</lastmod>
+  </url>
+  <url>
+    <loc>https://dromos.codenexis.com/guides/templates/</loc>
+    <lastmod>2026-10-26</lastmod>
   </url>
 </urlset>

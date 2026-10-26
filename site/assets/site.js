@@ -101,7 +101,7 @@
     }
   }
   function select(button) {
-    var target = button.previousElementSibling;
+    var target = button.hasAttribute('data-copy-next') ? button.closest('.code-card').querySelector('pre') : button.previousElementSibling;
     if (!target) return;
     var range = document.createRange();
     range.selectNodeContents(target);
@@ -112,6 +112,12 @@
   document.querySelectorAll('[data-copy]').forEach(function (button) {
     button.addEventListener('click', function () {
       copy(button, document.querySelector(button.dataset.copy).textContent.trim());
+    });
+  });
+  // Copy buttons above each code block in the guides
+  document.querySelectorAll('[data-copy-next]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      copy(button, button.closest('.code-card').querySelector('pre').textContent);
     });
   });
   var activeCopy = document.querySelector('[data-copy-active]');

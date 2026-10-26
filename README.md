@@ -65,7 +65,7 @@ It's also small enough to read in an afternoon. Lean mode is 5 files and 834 lin
 
 ## When to use something else
 
-With only a handful of routes, FastRoute and Symfony win some tests, by a fraction of a microsecond. If you want an ORM, templating and a container, use Laravel or Symfony; Dromos is a router with middleware, validation and response helpers. And routing is rarely the slow part of a request: one database query costs more than all of this. Dromos matters most for APIs that serve a lot of small requests.
+With only a handful of routes, FastRoute and Symfony win some tests, by a fraction of a microsecond. If you want an ORM, templates and a container already wired together, use Laravel or Symfony; Dromos is a router with middleware, validation and response helpers. If you'd rather choose your own, the guides show it with [Doctrine](docs/guides/doctrine.md) and with [Twig, Latte and HTMX](docs/guides/templates.md). And routing is rarely the slow part of a request: one database query costs more than all of this. Dromos matters most for APIs that serve a lot of small requests.
 
 ## Installation
 
@@ -85,6 +85,12 @@ Requires **PHP 8.2+**. The only dependencies are the four PSR interface packages
 - PSR-7 requests and responses, JSON body parsing, JSON errors and response helpers
 - Input validation with rules such as `required|email`
 - Emitters for PHP-FPM and OpenSwoole, or implement `EmitterInterface` for anything else
+- Works with Doctrine, Twig, Latte and HTMX: see the [guides](#guides)
+
+## Guides
+
+- [Using Doctrine with Dromos](docs/guides/doctrine.md): giving controllers an `EntityManager`, and keeping it healthy under OpenSwoole
+- [HTML templates and HTMX](docs/guides/templates.md): Twig, Latte or Blade, and pages that update in place with HTMX
 
 ---
 
@@ -173,6 +179,8 @@ final class ContainerControllerResolver implements ControllerResolverInterface
 
 Router::setControllerResolver(new ContainerControllerResolver($container));
 ```
+
+The [Doctrine guide](docs/guides/doctrine.md) shows this with an `EntityManager`, with and without a container.
 
 A handler must return a `ResponseInterface`. Anything else becomes a 500 error.
 
@@ -595,7 +603,7 @@ $server->start();
 ```
 
 - **JSON bodies:** OpenSwoole only parses form posts. Decode `rawContent()` into `parsedBody` yourself, as `benchmark/src/SwooleRequestFactory.php` does.
-- **Shared controllers:** each worker keeps one controller instance per class for every request it handles, so don't keep per-request state in controller properties.
+- **Shared controllers:** each worker keeps one controller instance per class for every request it handles, so don't keep per-request state in controller properties. With Doctrine, that means one `EntityManager` per worker: the [Doctrine guide](docs/guides/doctrine.md#under-openswoole) has a middleware that resets it after each request.
 - **Headers:** every value of a header is sent, including several `Set-Cookie` headers.
 - **Bodies:** a body that fits in 8 KB is sent in one piece with a `Content-Length`. A larger file or socket stream is sent in 8 KB chunks with chunked transfer encoding, so it never sits in memory whole.
 

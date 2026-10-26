@@ -33,7 +33,7 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/assets/fonts/chakra-petch-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/site.css?v=2">
+<link rel="stylesheet" href="/assets/site.css?v=3">
 
 <script type="application/ld+json">
 {
@@ -116,6 +116,11 @@
         },
         {
           "@type": "Question",
+          "name": "Does Dromos work with Doctrine and Twig?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Dromos has no database or template layer of its own, so Doctrine ORM, Twig, Latte and HTMX all fit alongside it. A controller resolver gives your controllers the EntityManager or template engine. Under OpenSwoole, clear Doctrine's EntityManager after each request. Guides: https://dromos.codenexis.com/guides/doctrine/ and https://dromos.codenexis.com/guides/templates/" }
+        },
+        {
+          "@type": "Question",
           "name": "What does Dromos need to run?",
           "acceptedAnswer": { "@type": "Answer", "text": "PHP 8.2 or later. Its only dependencies are the four PSR interface packages: psr/http-message, psr/http-server-handler, psr/http-server-middleware and psr/http-factory. Install it with composer require pauldeano/dromos. It's free and MIT licensed." }
         }
@@ -139,6 +144,7 @@
         <li><a href="#benchmarks">Benchmarks</a></li>
         <li><a href="#why">Why Dromos</a></li>
         <li><a href="#quick-start">Quick start</a></li>
+        <li><a href="#guides">Guides</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a class="gh" href="https://github.com/p4u1d34n0/Dromos" rel="noopener">GitHub</a></li>
       </ul>
@@ -369,6 +375,18 @@ Router::<span class="f">loadRoutes</span>(<span class="k">__DIR__</span> . <span
     </div>
   </section>
 
+  <section id="guides" class="section">
+    <div class="wrap">
+      <p class="eyebrow">Guides</p>
+      <h2>Bring your own database and templates</h2>
+      <p class="intro">Dromos is a router, so it leaves the database and the HTML to the libraries you already like. These guides show how they fit, with examples tested against current releases.</p>
+      <ul class="guides">
+        <li><a href="/guides/doctrine/"><h3>Using Doctrine with Dromos</h3><p>Give controllers an <code>EntityManager</code>, with or without PHP-DI, and keep it healthy in long-running OpenSwoole workers.</p><span class="go">Read the guide →</span></a></li>
+        <li><a href="/guides/templates/"><h3>HTML templates and HTMX</h3><p>Twig, Latte or Blade, and pages that update in place with HTMX: one route, the full page or just the fragment.</p><span class="go">Read the guide →</span></a></li>
+      </ul>
+    </div>
+  </section>
+
   <section id="faq" class="section">
     <div class="wrap narrow">
       <p class="eyebrow">FAQ</p>
@@ -393,6 +411,10 @@ Router::<span class="f">loadRoutes</span>(<span class="k">__DIR__</span> . <span
         <details>
           <summary><h3>Can I use Dromos with OpenSwoole, RoadRunner or FrankenPHP?</h3></summary>
           <p>Dromos runs in any long-running PHP worker: routes are compiled once and reused for every request. It ships an emitter for OpenSwoole, and you can implement <code>EmitterInterface</code> to send responses on other runtimes. It also runs under PHP-FPM, where its opcache route cache keeps routing to about 1.7 µs a request.</p>
+        </details>
+        <details>
+          <summary><h3>Does Dromos work with Doctrine and Twig?</h3></summary>
+          <p>Yes. Dromos has no database or template layer of its own, so Doctrine ORM, Twig, Latte and HTMX all fit alongside it. A controller resolver gives your controllers the <code>EntityManager</code> or template engine. Under OpenSwoole, clear Doctrine's <code>EntityManager</code> after each request. See the <a href="/guides/doctrine/">Doctrine guide</a> and the <a href="/guides/templates/">templates and HTMX guide</a>.</p>
         </details>
         <details>
           <summary><h3>What does Dromos need to run?</h3></summary>
@@ -431,6 +453,6 @@ Router::<span class="f">loadRoutes</span>(<span class="k">__DIR__</span> . <span
   </div>
 </footer>
 
-<script src="/assets/site.js?v=2" defer></script>
+<script src="/assets/site.js?v=3" defer></script>
 </body>
 </html>
